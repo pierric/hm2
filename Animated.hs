@@ -11,15 +11,15 @@ import Utils
 import Quaternion
 import ModelDef
 
-data Animated a = AnimatedNone   { a_global_ :: Int
+data Animated a = AnimatedNone   { a_global_ :: Maybe Int
                                  , a_times_  :: [[Int]]
                                  , a_data_   :: [[KeyType a]]
                                  }
-                | AnimatedLinear { a_global_ :: Int
+                | AnimatedLinear { a_global_ :: Maybe Int
                                  , a_times_  :: [[Int]]
                                  , a_data_   :: [[KeyType a]]
                                  }
-                | AnimatedHermite{ a_global_ :: Int
+                | AnimatedHermite{ a_global_ :: Maybe Int
                                  , a_times_  :: [[Int]]
                                  , a_data_
                                  , a_in_
@@ -29,10 +29,16 @@ data Animated a = AnimatedNone   { a_global_ :: Int
 data PackedFloat
 data PackedQuaternion
 
-newAnimated :: KeyStore a => AnimationBlock -> [Int] -> BS.ByteString -> Animated a
+newAnimated :: KeyStore a => AnimationBlock
+                          -> [Int]               -- global sequence
+                          -> BS.ByteString       -- MPQ 
+                          -> Animated a
 newAnimated = newAnimated' undefined
 
-at :: KeyStore a => Animated a -> Int -> Int -> KeyType a
+at :: KeyStore a => Animated a
+                 -> Int                          -- index
+                 -> Int                          -- time
+                 -> KeyType a
 at = at' undefined
 
 newAnimated' :: KeyStore a => a -> AnimationBlock -> [Int] -> BS.ByteString -> Animated a
@@ -41,12 +47,12 @@ newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global 
       times = map (\(nentry,oentry) -> bunchOf nentry oentry getUShort) ht
       hk    = bunchOf nkey  okey  getHeader
       keys  = mapM (\(nentry,oentry) -> bunchOf nentry oentry (getKey unused)) hk
-  in  assert (seq == -1 || length global > seq) $
-      case () of 
+      gs    = if seq == -1 then Nothing else assert (0 <= seq && seq < length global) (Just $ global!!seq)
+  in  case () of 
         _ | typ == 0 || typ == 1 -> 
-              AnimatedLinear  (global!!seq) times keys
+              AnimatedLinear  gs times keys
         _ | typ == 2             -> 
-              AnimatedHermite (global!!seq) times (every3 keys) (every3 (tail keys)) (every3 (drop 2 keys))
+              AnimatedHermite gs times (every3 keys) (every3 (tail keys)) (every3 (drop 2 keys))
 
     where
       bunchOf s o g = getBunchOf s g (BS.drop (fromIntegral o) mpq)
@@ -59,15 +65,18 @@ at' :: KeyStore a => a -> Animated a -> Int -> Int -> KeyType a
 at' unused ani idx time =
     assert (idx >=0 && idx < length (a_data_ ani) && idx < length (a_times_ ani)) $
     if (length dt > 1)
-    then let ps    = filter (\(s,e) -> fst s <= time && time < fst e) $ zip dt (tail dt)
+    then let ps    = filter (\(s,e) -> fst s <= tt && tt < fst e) $ zip dt (tail dt)
              (s,e) = assert (length ps > 0) (head ps)
              r     = fromIntegral (time - fst s) / fromIntegral (fst e - fst s)
          in  interpolate ani (snd s) (snd e) r
     else assert (not (null dt)) (snd $ head dt)
     
     where 
+      tt = case a_global_ ani of 
+             Nothing -> time
+             Just 0  -> 0
+             Just mt -> time `mod` mt
       dt = zip (a_times_ ani !! idx) (a_data_ ani !! idx)
-
       interpolate (AnimatedNone _ _ _) s e r = s
       interpolate (AnimatedLinear _ _ _) s e r = lerp unused s e r
       interpolate (AnimatedHermite _ _ _ _ _) s e r = assert False undefined

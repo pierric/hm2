@@ -57,64 +57,64 @@ data TextureDef = TextureDef{ td_type_, td_flags_, td_nameLen_, td_nameOfs_ :: I
 
 data TexUnit    = TexUnit{ tu_flags_
                          , tu_shading_
-	                 , tu_op_
-	                 , tu_op2_ -- :: Word16
-	                 , tu_colorIndex_ -- :: Int16
-	                 , tu_flagsIndex_
-	                 , tu_texunit_
-	                 , tu_mode_
-	                 , tu_textureid_
-	                 , tu_texunit2
-	                 , tu_transid_
-	                 , tu_texanimid_ :: Int -- :: Word16
+                         , tu_op_
+                         , tu_op2_ -- :: Word16
+                         , tu_colorIndex_ -- :: Int16
+                         , tu_flagsIndex_
+                         , tu_texunit_
+                         , tu_mode_
+                         , tu_textureid_
+                         , tu_texunit2
+                         , tu_transid_
+                         , tu_texanimid_ :: Int -- :: Word16
                          }
 
 data Geoset = Geoset{ mg_id_
-	            , mg_vstart_
-	            , mg_vcount_
-	            , mg_istart_
-	            , mg_icount_
-	            , mg_nBones_
-	            , mg_StartBones_
-	            , mg_d5_
-	            , mg_rootBone_ :: Int
-	            , mg_BoundingBox1_, mg_BoundingBox2_ :: Vector3 Float
-	            , mg_radius_ :: Float
+                    , mg_vstart_
+                    , mg_vcount_
+                    , mg_istart_
+                    , mg_icount_
+                    , mg_nBones_
+                    , mg_StartBones_
+                    , mg_d5_
+                    , mg_rootBone_ :: Int
+                    , mg_BoundingBox1_, mg_BoundingBox2_ :: Vector3 Float
+                    , mg_radius_ :: Float
                     }
 
 data View = View { mv_id_ :: String
                  , mv_nIndex_
                  , mv_ofsIndex_
                  , mv_nTris_
-	         , mv_ofsTris_
+                 , mv_ofsTris_
                  , mv_nProps_
-	         , mv_ofsProps_
+                 , mv_ofsProps_
                  , mv_nSub_
-	         , mv_ofsSub_
+                 , mv_ofsSub_
                  , mv_nTex_
-	         , mv_ofsTex_
-	         , mv_lod_ :: Int
+                 , mv_ofsTex_
+                 , mv_lod_ :: Int
                  }
 data AnimationBlock = AnimationBlock{ ab_type_
-	                            , ab_seq_
-	                            , ab_nTimes_
-	                            , ab_ofsTimes_
-	                            , ab_nKeys_
-	                            , ab_ofsKeys_ :: Int
+                                    , ab_seq_
+                                    , ab_nTimes_
+                                    , ab_ofsTimes_
+                                    , ab_nKeys_
+                                    , ab_ofsKeys_ :: Int
                                     }
 data AttachmentDef = AttachmentDef{ ad_id_
-	                          , ad_bone_ :: Int
-	                          , ad_pos_  :: Vector3 Float
+                                  , ad_bone_ :: Int
+                                  , ad_pos_  :: Vector3 Float
                                   }
 
 type TransDef = AnimationBlock
 
 data VertexDef = VertexDef{ vd_pos_ :: Vector3 Float
-	                  , vd_weights_ :: [Int]
-	                  , vd_bones_ :: [Int]
-	                  , vd_normal_ :: Vector3 Float
-	                  , vd_texcoords_ :: Vector2 Float
-	                  , vd_unk1_, vd_unk2_ :: Int
+                          , vd_weights_ :: [Int]
+                          , vd_bones_ :: [Int]
+                          , vd_normal_ :: Vector3 Float
+                          , vd_texcoords_ :: Vector2 Float
+                          , vd_unk1_, vd_unk2_ :: Int
                           }
 
 data ColorDef = ColorDef{  cf_color_, cf_opacity_ :: AnimationBlock }
