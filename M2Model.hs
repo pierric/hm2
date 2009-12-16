@@ -1,7 +1,14 @@
 module M2Model where
 
+import Data.Bits((.&.))
+import Data.Binary
+import Data.List(sort)
+import Data.Tensor
+import Data.Ord
+import qualified Data.ByteString.Lazy as BS
 import Control.Exception
-import qualified ModelDef as MD
+import ModelDef
+import Animated
 import Utils
 
 data M2Model = M2Model{ m_name_ :: String
@@ -11,19 +18,19 @@ data M2Model = M2Model{ m_name_ :: String
                       , m_textures_      :: [Texture]
                       , m_geoset_        :: [Geoset]
                       , n_renderpass_    :: [RenderPass]
-                      , m_colors_        :: [(Animated Color, Animated Opacity)]
-                      , m_transparency_  :: [Animated Short]
+                      , m_colors_        :: [(Animated (Vector3 Float), Animated PackedFloat)]
+                      , m_transparency_  :: [Animated PackedFloat]
                       , m_trans_lookup_  :: [Int]
                       , m_attachments_   :: [Attachment]
                       , m_attach_lookup_ :: [Int]
                       }
 
-type Vertex = MD.VertexDef
+type Vertex = VertexDef
 
 data Texture = Texture    { t_filename_ :: String, t_flags_ :: Int }
              | CharTexture{ t_type_     :: Int   , t_flags_ :: Int }
 
-type Geoset = MD.Geoset
+type Geoset = GeosetDef
 
 data RenderPass = RenderPass{ r_geoset_ :: Geoset
 	                    , r_tex_    :: Texture
@@ -37,85 +44,94 @@ data RenderPass = RenderPass{ r_geoset_ :: Geoset
 	                    , r_swrap_, r_twrap_ :: Bool
                             }
 
-type Attachment = MD.AttachmentDef
+type Attachment = AttachmentDef
 
-build :: FilePath -> IO M2Model
-build fpath = do archive <- BS.readFile fpath
-                 let def  = decode archive :: MD.Header
-                 assert (nViews_ def > 0) (return ())
+newModel :: FilePath -> IO M2Model
+newModel fpath = do 
+  archive <- BS.readFile fpath
+  let def  = decode archive :: Header
+  assert (nViews_ def > 0) (return ())
+             
+  -- read a few definitions
+  let bunchOf cnt offset g = getBunchOf cnt g (BS.drop (fromIntegral offset) archive)
+  let gseq = bunchOf (nGlobalSequences_ def)    (ofsGlobalSequences_ def) getUInt
+  let vert = bunchOf (nVertices_ def)           (ofsVertices_ def)        (get :: Get VertexDef)
+  let txdf = bunchOf (nTextures_ def)           (ofsTextures_ def)        (get :: Get TextureDef)
+  let atdf = bunchOf (nAttachments_ def)        (ofsAttachments_ def)     (get :: Get AttachmentDef)
+  let atlk = bunchOf (nAttachLookup_ def)       (ofsAttachLookup_ def)    getUShort
+  let cldf = bunchOf (nColors_ def)             (ofsColors_ def)          (get :: Get ColorDef)
+  let trdf = bunchOf (nTransparency_ def)       (ofsTransparency_ def)    (get :: Get TransDef)
+  let trlk = bunchOf (nTransparencyLookup_ def) (ofsTransparencyLookup_ def) getUShort
+  let rflg = bunchOf (nTexFlags_ def)           (ofsTexFlags_ def)        (get :: Get RenderFlags)
+  let txlk = bunchOf (nTexLookup_ def)          (ofsTexLookup_ def)       getUShort
+  let talk = bunchOf (nTexAnimLookup_ def)      (ofsTexAnimLookup_ def)   getUShort
+  let tulk = bunchOf (nTexUnitLookup_ def)      (ofsTexUnitLookup_ def)   getUShort
 
-                 -- read a few definitions
-                 let bunchOf cnt offset g = getBunchOf cnt g (BS.drop offset archive)
-                 let gseq = bunchOf (nGlobalSequences_ def)    (ofsGlobalSequences_ def) getUInt
-                 let vert = bunchOf (nVertices_ def)           (ofsVertices_ def)        (get :: Get MD.VertexDef)
-                 let txdf = bunchOf (nTextures_ def)           (ofsTextures_ def)        (get :: Get MD.TextureDef)
-                 let atdf = bunchOf (nAttachments_ def)        (ofsAttachments_ def)     (get :: Get MD.AttachmentDef)
-                 let atlk = bunchOf (nAttachLookup_ def)       (ofsAttachLookup_ def)    getUShort
-                 let cldf = bunchOf (nColors_ def)             (ofsColors_ def)          (get :: Get MD.ColorDef)
-                 let trdf = bunchOf (nTransparency_ def)       (ofsTransparency_ def)    (get :: MD.TransDef)
-                 let trlk = bunchOf (nTransparencyLookup_ def) (ofsTransparencyLookup_ def) getWord16le
-                 let rflg = bunchOf (nTexFlags_ def)           (ofsTexFlags_ def)        (get :: Get MD.RenderFlags)
-                 let txlk = bunchOf (nTexLookup_ def)          (ofsTexLookup_ def)       getUShort
-                 let talk = bunchOf (nTexAnimLookup_ def)      (ofsTexAnimLookup_ def)   getUShort
-                 let tulk = bunchOf (nTexUnitLookup_ def)      (ofsTexUnitLookup_ def)   getUShort
+  -- textures
+  let textures = assert (nTextures_ def < 32) $ 
+                 map (\def -> case td_type_ def of
+                                0 -> Texture (bunchOf (td_nameLen_ def)
+                                             (td_nameOfs_ def) (get :: Get Char))
+                                             (td_flags_ def)
+                                _ -> CharTexture (td_type_ def) (td_flags_ def)
+                     ) txdf
 
-                 -- textures
-                 let textures = assert (nTextures_ def < 32) $ 
-                                map (\def -> case td_type_ def of
-                                               0 -> Texture (bunchOf (td_nameLen_ def)
-                                                                     (td_nameOfs_ def) (get :: Get Char))
-                                                            (td_flags_ def)
-                                               _ -> 
-                                    ) txdf
-
-                 -- view
-                 (indices, geoset, texunit) <- lod fpath
-
-                 -- renderpasses
-                 let rps  = map (renderpass textures geoset rflg trdf txlk talk tulk) texunit
-
-                 -- create the model
-                 return $ M2Model fpath
-                                  gseq
-                                  vert
-                                  indices
-                                  textures
-                                  geoset
-                                  (sort rps)
-                                  ?? ?? 
-                                  trlk 
-                                  atdf
-                                  atlk
+  -- color table
+  let color  = map (\(ColorDef clr opc) -> 
+                        (newAnimated clr gseq archive ,newAnimated opc gseq archive)) cldf
+  -- transparency table
+  let trans  = map (\tra -> newAnimated tra gseq archive) trdf
+      
+  -- view
+  (indices, geoset, texunit) <- lod fpath
+  
+  -- renderpasses
+  let rps  = map (renderpass textures geoset rflg trlk txlk talk tulk) texunit
+             
+  -- create the model
+  return $ M2Model fpath
+                   gseq
+                   vert
+                   indices
+                   textures
+                   geoset
+                   (sort rps)
+                   color
+                   trans
+                   trlk 
+                   atdf
+                   atlk
 
 
-lod :: FilePath -> IO ([Int],[MD.Geoset],[MD.TexUnit])
-lod fname mpq = do let (s,n) = splitAt 3 $ reverse fname
-                   let lname = assert (s=="2M.") (reverse $ "niks.00" ++ n)
-                   archive <- BS.readFile lname
-                   let view = decode archive :: MD.View
-                   let bunchOf cnt offset g = getBunchOf cnt g (BS.drop offset bs) archive
-                   let idlk = bunchOf (mv_nIndex_ view) (mv_ofsIndex_ view) getUShort
-                   let tris = bunchOf (mv_nTris_ view)  (mv_ofsTris_ view)  getUShort
-                   let gsdf = bunchOf (mv_nSub_ view)   (mv_ofsSub_ view)   (get :: MD.Geoset)
-                   let txdf = bunchOf (mv_nTex_ view)   (mv_ofsTex_ view)   (get :: MD.TexUnit)
-                   return $ (map (idlk!!) tris, gsdf, txdf)
+lod :: FilePath -> IO ([Int],[GeosetDef],[TexUnitDef])
+lod fname = do 
+  let (s,n) = splitAt 3 $ reverse fname
+  let lname = assert (s=="2M.") (reverse $ "niks.00" ++ n)
+  archive <- BS.readFile lname
+  let view = decode archive :: ViewDef
+  let bunchOf cnt offset g = getBunchOf cnt g (BS.drop (fromIntegral offset) archive)
+  let idlk = bunchOf (mv_nIndex_ view) (mv_ofsIndex_ view) getUShort
+  let tris = bunchOf (mv_nTris_ view)  (mv_ofsTris_ view)  getUShort
+  let gsdf = bunchOf (mv_nSub_ view)   (mv_ofsSub_ view)   (get :: Get GeosetDef)
+  let txdf = bunchOf (mv_nTex_ view)   (mv_ofsTex_ view)   (get :: Get TexUnitDef)
+  return $ (map (idlk!!) tris, gsdf, txdf)
 
 renderpass :: [Texture]        -- all available textures
            -> [Geoset]         -- all available geosets
-           -> [MD.RenderFlags] -- all available renderflags
-           -> [MD.TransDef]
+           -> [RenderFlags]    -- all available renderflags
+           -> [Int]         -- transparency lookup
            -> [Int]         -- texture lookup
            -> [Int]         -- texture anim lookup
            -> [Int]         -- texture unit lookup
-           -> TexUnit
-           -> [RenderPass]
-renderpass texdef geodef rflg trdf txlk talk tulk unit =
+           -> TexUnitDef
+           -> RenderPass
+renderpass texdef geodef rflg trlk txlk talk tulk unit =
     let geoset = geodef !! tu_op_ unit
         flag   = rflg !! tu_flagsIndex_ unit
         tex       = texdef !! (txlk !! tu_textureid_ unit)
         blend     = rf_blend_   flag
         billboard = (rf_flags_ flag .&. 8) /= 0
-        opacity   = trdf !! tu_transid_ unit
+        opacity   = trlk !! tu_transid_ unit
     in  RenderPass{ r_geoset_      = geoset
 	          , r_tex_         = tex
                   , r_indexStart_  = mg_istart_ geoset
@@ -141,7 +157,12 @@ renderpass texdef geodef rflg trdf txlk talk tulk unit =
 
     where z_ (Vector3 _ _ a) = a
 
-instance Oder RenderPass where
+instance Eq RenderPass where
+    r1 == r2      = (r_order_ r1 == r_order_ r2) && 
+                    (r_blendmode_ r1 == r_blendmode_ r2) &&
+                    (r_p_ r1 == r_p_ r2)
+
+instance Ord RenderPass where
     compare r1 r2 = case compare (r_order_ r1) (r_order_ r2) of
                       LT -> LT
                       GT -> GT

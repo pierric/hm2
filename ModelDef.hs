@@ -55,46 +55,46 @@ data PhysicsSettings = PhysicsSettings{ vertexBox1_, vertexBox2_ :: Vector3 Floa
 
 data TextureDef = TextureDef{ td_type_, td_flags_, td_nameLen_, td_nameOfs_ :: Int }
 
-data TexUnit    = TexUnit{ tu_flags_
-                         , tu_shading_
-                         , tu_op_
-                         , tu_op2_ -- :: Word16
-                         , tu_colorIndex_ -- :: Int16
-                         , tu_flagsIndex_
-                         , tu_texunit_
-                         , tu_mode_
-                         , tu_textureid_
-                         , tu_texunit2
-                         , tu_transid_
-                         , tu_texanimid_ :: Int -- :: Word16
-                         }
+data TexUnitDef = TexUnitDef{ tu_flags_
+                            , tu_shading_
+                            , tu_op_
+                            , tu_op2_ -- :: Word16
+                            , tu_colorIndex_ -- :: Int16
+                            , tu_flagsIndex_
+                            , tu_texunit_
+                            , tu_mode_
+                            , tu_textureid_
+                            , tu_texunit2
+                            , tu_transid_
+                            , tu_texanimid_ :: Int -- :: Word16
+                            }
 
-data Geoset = Geoset{ mg_id_
-                    , mg_vstart_
-                    , mg_vcount_
-                    , mg_istart_
-                    , mg_icount_
-                    , mg_nBones_
-                    , mg_StartBones_
-                    , mg_d5_
-                    , mg_rootBone_ :: Int
-                    , mg_BoundingBox1_, mg_BoundingBox2_ :: Vector3 Float
-                    , mg_radius_ :: Float
-                    }
+data GeosetDef  = GeosetDef { mg_id_
+                            , mg_vstart_
+                            , mg_vcount_
+                            , mg_istart_
+                            , mg_icount_
+                            , mg_nBones_
+                            , mg_StartBones_
+                            , mg_d5_
+                            , mg_rootBone_ :: Int
+                            , mg_BoundingBox1_, mg_BoundingBox2_ :: Vector3 Float
+                            , mg_radius_ :: Float
+                            }
 
-data View = View { mv_id_ :: String
-                 , mv_nIndex_
-                 , mv_ofsIndex_
-                 , mv_nTris_
-                 , mv_ofsTris_
-                 , mv_nProps_
-                 , mv_ofsProps_
-                 , mv_nSub_
-                 , mv_ofsSub_
-                 , mv_nTex_
-                 , mv_ofsTex_
-                 , mv_lod_ :: Int
-                 }
+data ViewDef  = ViewDef { mv_id_ :: String
+                        , mv_nIndex_
+                        , mv_ofsIndex_
+                        , mv_nTris_
+                        , mv_ofsTris_
+                        , mv_nProps_
+                        , mv_ofsProps_
+                        , mv_nSub_
+                        , mv_ofsSub_
+                        , mv_nTex_
+                        , mv_ofsTex_
+                        , mv_lod_ :: Int
+                        }
 data AnimationBlock = AnimationBlock{ ab_type_
                                     , ab_seq_
                                     , ab_nTimes_
@@ -171,25 +171,25 @@ instance Binary TextureDef where
     get   = return TextureDef `ap` ui `ap` ui `ap` ui `ap` ui
     put _ = error "cannot save TextureDef"
 
-instance Binary TexUnit where
-    get   = return TexUnit `ap` us `ap` us `ap` us `ap` us
-                           `ap` us `ap` us `ap` us `ap` us
-                           `ap` us `ap` us `ap` us `ap` us
+instance Binary TexUnitDef where
+    get   = return TexUnitDef `ap` us `ap` us `ap` us `ap` us
+                              `ap` us `ap` us `ap` us `ap` us
+                              `ap` us `ap` us `ap` us `ap` us
     put _ = error "cannot save TexUnit"
 
-instance Binary Geoset where
-    get   = return Geoset `ap` ui 
-                          `ap` us `ap` us `ap` us `ap` us
-                          `ap` us `ap` us `ap` us `ap` us
-                          `ap` get `ap` get
-                          `ap` getFloat32le
+instance Binary GeosetDef where
+    get   = return GeosetDef `ap` ui 
+                             `ap` us `ap` us `ap` us `ap` us
+                             `ap` us `ap` us `ap` us `ap` us
+                             `ap` get `ap` get
+                             `ap` getFloat32le
     put _ = error "cannot save Geoset"
 
-instance Binary View where
-    get   = return View `ap` (sequence [cc,cc,cc,cc])
-                        `ap` ui `ap` ui `ap` ui `ap` ui
-                        `ap` ui `ap` ui `ap` ui `ap` ui
-                        `ap` ui `ap` ui `ap` ui
+instance Binary ViewDef where
+    get   = return ViewDef `ap` (sequence [cc,cc,cc,cc])
+                           `ap` ui `ap` ui `ap` ui `ap` ui
+                           `ap` ui `ap` ui `ap` ui `ap` ui
+                           `ap` ui `ap` ui `ap` ui
     put _ = error "cannot save View"
 
 instance Binary AnimationBlock where
@@ -265,7 +265,7 @@ instance Show PhysicsSettings where
              "\n                " ++ "boundingBox " ++ showVecD (boundingBox1_ p) ++ " " ++ showVecD (boundingBox2_ p) ++ 
              "\n                " ++ printf "boundingRadius %.2f" (boundingRadius_ p)
 
-instance Show View where
+instance Show ViewDef where
     show v = unlines [ printf "id:%s" (mv_id_ v)
                      , printf "nIndex:%d" (mv_nIndex_ v)
                      , printf "ofsIndex:0x%x" (mv_ofsIndex_ v)
