@@ -106,7 +106,7 @@ newModel fpath = do
 lod :: FilePath -> IO ([Int],[GeosetDef],[TexUnitDef])
 lod fname = do 
   let (s,n) = splitAt 3 $ reverse fname
-  let lname = assert (s=="2M.") (reverse $ "niks.00" ++ n)
+  let lname = assert (s=="2M." || s=="2m.") (reverse $ "niks.00" ++ n)
   archive <- BS.readFile lname
   let view = decode archive :: ViewDef
   let bunchOf cnt offset g = getBunchOf cnt g (BS.drop (fromIntegral offset) archive)
@@ -180,3 +180,7 @@ instance Ord RenderPass where
             5           4            Combiners_Fade
             6           4            Used in the Deeprun Tram subway glass, supposedly (src=dest_color, dest=src_color)
 --}
+
+instance Show Texture where
+    show (Texture f _) = "Texture: " ++ f
+    show (CharTexture t _) = "Texture: " ++ show t
