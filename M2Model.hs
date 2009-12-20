@@ -14,7 +14,7 @@ import Utils
 data M2Model = M2Model{ m_name_ :: String
                       , m_global_sequence_ :: [Int]
                       , m_vertices_      :: [Vertex] -- vertices
-                      , m_indices_       :: [Int]     -- triagnles by index
+                      , m_indices_       :: [Int]    -- triagnles by index
                       , m_textures_      :: [Texture]
                       , m_geoset_        :: [Geoset]
                       , m_renderpass_    :: [RenderPass]
@@ -114,19 +114,19 @@ lod fname = do
   let txdf = bunchOf (mv_nTex_ view)   (mv_ofsTex_ view)   (get :: Get TexUnitDef)
   return $ (map (idlk!!) tris, gsdf, txdf)
 
-renderpass :: [Texture]        -- all available textures
-           -> [Geoset]         -- all available geosets
-           -> [RenderFlags]    -- all available renderflags
+renderpass :: [Texture]
+           -> [Geoset]
+           -> [RenderFlags]
            -> [Int]         -- transparency lookup
            -> [Int]         -- texture lookup
            -> [Int]         -- texture anim lookup
            -> [Int]         -- texture unit lookup
            -> TexUnitDef
            -> RenderPass
-renderpass texdef geodef rflg trlk txlk talk tulk unit =
-    let geoset = geodef !! tu_op_ unit
-        flag   = rflg !! tu_flagsIndex_ unit
-        tex       = texdef !! (txlk !! tu_textureid_ unit)
+renderpass tx gs rflg trlk txlk talk tulk unit =
+    let geoset    = tu_op_ unit
+        flag      = rflg !! tu_flagsIndex_ unit
+        tex       = (txlk !! tu_textureid_ unit)
         blend     = rf_blend_   flag
         billboard = (rf_flags_ flag .&. 8) /= 0
         opacity   = trlk !! tu_transid_ unit
@@ -139,14 +139,14 @@ renderpass texdef geodef rflg trlk txlk talk tulk unit =
                   , r_unlit_       = (rf_flags_ flag .&. 1) /= 0
                   , r_noZWrite_    = (rf_flags_ flag .&. 16) /= 0
                   , r_billboard_   = billboard
-	          , r_p_           = z_ (mg_BoundingBox1_ geoset)
+	          , r_p_           = z_ $ mg_BoundingBox1_ $ gs !! geoset
 	          , r_texanim_     = -1                     -- fix-me, we should support texture animation
                   , r_color_       = tu_colorIndex_ unit    -- maybe should be a Color, rather than an index
                   , r_opacity_     = opacity
                   , r_blendmode_   = blend
 	          , r_order_       = tu_shading_ unit
-	          , r_swrap_       = (t_flags_ tex .&. 1) /= 0
-                  , r_twrap_       = (t_flags_ tex .&. 2) /= 0
+	          , r_swrap_       = (t_flags_ (tx !! tex) .&. 1) /= 0
+                  , r_twrap_       = (t_flags_ (tx !! tex) .&. 2) /= 0
                   }    
 
     where z_ (Vector3 _ _ a) = a

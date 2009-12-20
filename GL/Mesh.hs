@@ -1,25 +1,84 @@
-module Mesh where
+module GL.Mesh where
+
+import Data.Word
+import Data.Tensor
+import qualified Graphics.Rendering.OpenGL.GL as GL
+import Foreign.Marshal.Array
+import Foreign.Ptr
+import Foreign.Storable
+import Control.Exception
+
+import M2Model
+import ModelDef
+import BLP
+import GL.Texture
 
 data SubMesh = SubMesh{ sm_vstart_ 
                       , sm_vcount_
                       , sm_istart_
-                      , sm_icount_
+                      , sm_icount_ :: Int
                       }
 
 
-data Mesh = Mesh{ vertices_ :: VertexData
-                , indices_  :: IndexData
+data Mesh = Mesh{ vertices_ :: (Int,GL.BufferObject)
+                , indices_  :: [Word16]
                 , renderpasses_ :: [RenderPass]
                 , submeshes_    :: [SubMesh]
+--              , textures_     :: [GL.Texture.Texture]
                 }
 
 newMesh :: M2Model -> IO Mesh
-newMesh mdl = ..
+newMesh mdl = do [vbo] <- GL.genObjectNames 1
+                 GL.bindBuffer GL.ArrayBuffer GL.$= Just vbo
+                 -- alloca buffer data
+                 -- 16 bytes for position
+                 -- 12 bytes for normal
+                 -- 8  bytes for texcoord
+                 let len = length (m_vertices_ mdl)
+                 GL.bufferData GL.ArrayBuffer GL.$= (fromIntegral $ len * 36, nullPtr, GL.StaticDraw)
+                 GL.withMappedBuffer GL.ArrayBuffer GL.WriteOnly	
+                   (\ptr -> let pos = map (to4 . fix . vd_pos_) (m_vertices_ mdl)
+                                nor = map (fix . vd_normal_)    (m_vertices_ mdl)
+                                tcd = map vd_texcoords_         (m_vertices_ mdl)
+                            in  do withArrayLen pos (\l s -> copyArray ptr   s l)
+                                   let ptr'  = ptr `plusPtr` (len * 16)
+                                   withArrayLen nor (\l s -> copyArray ptr'  s l)
+                                   let ptr'' = ptr `plusPtr` (len * 28)
+                                   withArrayLen tcd (\l s -> copyArray ptr'' s l))
+                   (\err -> assert False $ return ())
+                 let sm = map (\gs -> SubMesh (mg_vstart_ gs) (mg_vcount_ gs)
+                                              (mg_istart_ gs) (mg_icount_ gs)
+                              ) (m_geoset_ mdl)
+
+                 {--
+                 -- load the textures, for test purpose
+                 ts <- let fromFT (M2Model.Texture f _) = "../tmp/" ++ f
+                       in  mapM (newTexture TEX_TYPE_2D) =<< mapM (newBLP . fromFT) (m_textures_ mdl)
+                 --}
+
+                 return $ Mesh (len,vbo) (map fromIntegral (m_indices_ mdl)) (m_renderpass_ mdl) sm
+
+    where
+      fix (Vector3 x y z) = Vector3 x z (-y)
+      to4 (Vector3 x y z) = Vector4 x y z 1
 
 
 renderMesh :: Mesh -> IO ()
 renderMesh mesh = mapM_ (\r -> withMaterial r (draw (r_geoset_ r))) (renderpasses_ mesh)
     where 
-      draw idx = let sm  = submeshes mesh !! idx
-                     rng = (sm_vstart_ sm, sm_vstart_ sm + sm_vcount_ sm)
-                 in GL.drawRangeElements GL.Triangles rng (sm_icount sm) GL.UnsignedShort ({-- point to indices --})
+      draw idx = let sm  = submeshes_ mesh !! idx
+                     rng = (fromIntegral $ sm_vstart_ sm, fromIntegral $ sm_vstart_ sm + sm_vcount_ sm)
+                     (len, vbo) = vertices_ mesh
+                 in  do GL.bindBuffer   GL.ArrayBuffer GL.$= Just vbo
+                        GL.clientState  GL.VertexArray GL.$= GL.Enabled
+                        GL.arrayPointer GL.VertexArray GL.$=
+                          GL.VertexArrayDescriptor 4 GL.Float 0 (intPtrToPtr 0 :: Ptr GL.GLint)
+                        GL.arrayPointer GL.NormalArray GL.$= 
+                          GL.VertexArrayDescriptor 3 GL.Float 0 (intPtrToPtr (fromIntegral $ len * 16) :: Ptr GL.GLint)
+                        GL.arrayPointer GL.TextureCoordArray GL.$= 
+                          GL.VertexArrayDescriptor 2 GL.Float 0 (intPtrToPtr (fromIntegral $ len * 28) :: Ptr GL.GLint)
+                        withArray (indices_ mesh) 
+                          (GL.drawRangeElements GL.Triangles rng (fromIntegral $ sm_icount_ sm) GL.UnsignedShort)
+                        GL.clientState GL.VertexArray  GL.$= GL.Disabled
+
+      withMaterial rp act = withTexture (textures_ mesh !! r_tex_ rp) act

@@ -32,7 +32,7 @@ newTexture typ raw = do
   case raw of
     BLPp _ pal size@(w,h) ab raw -> allocaArray (w*h) (setupLayerP pal size ab raw)
     BLPc _ cty size@(w,h) raw    -> setupLayerC cty size raw
-  texFilter (glTextureType typ) GL.$= ((GL.Linear',Nothing),GL.Linear')
+  GL.textureFilter (glTextureType typ) GL.$= ((GL.Linear',Nothing),GL.Linear')
   return (Texture {--(blp_name raw)--} typ texture)
 
     where fix :: Word32 -> Word32 -> Word32 
@@ -70,11 +70,18 @@ newTexture typ raw = do
                                                                 (fromIntegral $ hb - lb) 
                                                                 pb)))
 
-          glTextureType TEX_TYPE_1D = GL.Texture1D
-          glTextureType TEX_TYPE_2D = GL.Texture2D
-          glTextureType TEX_TYPE_3D = GL.Texture3D
-          glTextureType TEX_TYPE_CUBE_MAP = GL.TextureCubeMap
+withTexture tex act = do GL.textureBinding typ GL.$= Just (tx_object_ tex)
+                         act
+                         GL.textureBinding typ GL.$= Nothing
+    where
+      typ = glTextureType (tx_type_ tex)
 
-          glCompressedTextureFormat DXT1 = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT1 
-          glCompressedTextureFormat DXT3 = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT3
-          glCompressedTextureFormat DXT5 = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT5
+glTextureType TEX_TYPE_1D = GL.Texture1D
+glTextureType TEX_TYPE_2D = GL.Texture2D
+glTextureType TEX_TYPE_3D = GL.Texture3D
+glTextureType TEX_TYPE_CUBE_MAP = GL.TextureCubeMap
+
+glCompressedTextureFormat DXT1 = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT1 
+glCompressedTextureFormat DXT3 = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT3
+glCompressedTextureFormat DXT5 = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT5
+
