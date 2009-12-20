@@ -17,7 +17,7 @@ data M2Model = M2Model{ m_name_ :: String
                       , m_indices_       :: [Int]     -- triagnles by index
                       , m_textures_      :: [Texture]
                       , m_geoset_        :: [Geoset]
-                      , n_renderpass_    :: [RenderPass]
+                      , m_renderpass_    :: [RenderPass]
                       , m_colors_        :: [(Animated (Vector3 Float), Animated PackedFloat)]
                       , m_transparency_  :: [Animated PackedFloat]
                       , m_trans_lookup_  :: [Int]
@@ -32,10 +32,8 @@ data Texture = Texture    { t_filename_ :: String, t_flags_ :: Int }
 
 type Geoset = GeosetDef
 
-data RenderPass = RenderPass{ r_geoset_ :: Geoset
-	                    , r_tex_    :: Texture
-                            , r_indexStart_, r_indexCount_
-                            , r_vertexStart_, r_vertexEnd_ :: Int
+data RenderPass = RenderPass{ r_geoset_ :: Int
+	                    , r_tex_    :: Int
 	                    , r_useTex2_, r_useEnvMap_, r_cull_, r_trans_
                             , r_unlit_, r_noZWrite_, r_billboard_ :: Bool
 	                    , r_p_ :: Float
@@ -134,10 +132,6 @@ renderpass texdef geodef rflg trlk txlk talk tulk unit =
         opacity   = trlk !! tu_transid_ unit
     in  RenderPass{ r_geoset_      = geoset
 	          , r_tex_         = tex
-                  , r_indexStart_  = mg_istart_ geoset
-                  , r_indexCount_  = mg_icount_ geoset
-                  , r_vertexStart_ = mg_vstart_ geoset
-                  , r_vertexEnd_   = mg_vstart_ geoset + mg_vcount_ geoset
 	          , r_useTex2_     = False
                   , r_useEnvMap_   = (tulk !! tu_texunit_ unit) == -1 && billboard && blend > 2
                   , r_cull_        = (rf_flags_ flag .&. 4) == 0 && blend == 0

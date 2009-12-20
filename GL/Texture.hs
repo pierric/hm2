@@ -32,6 +32,7 @@ newTexture typ raw = do
   case raw of
     BLPp _ pal size@(w,h) ab raw -> allocaArray (w*h) (setupLayerP pal size ab raw)
     BLPc _ cty size@(w,h) raw    -> setupLayerC cty size raw
+  texFilter (glTextureType typ) GL.$= ((GL.Linear',Nothing),GL.Linear')
   return (Texture {--(blp_name raw)--} typ texture)
 
     where fix :: Word32 -> Word32 -> Word32 
