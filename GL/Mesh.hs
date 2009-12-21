@@ -7,63 +7,46 @@ import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
 import Control.Exception
+import Control.Monad.Trans(lift)
 
+import Resource
 import M2Model
 import ModelDef
-import BLP
+import GL.Types
 import GL.Texture
+import GL.Resource
 
-data SubMesh = SubMesh{ sm_vstart_ 
-                      , sm_vcount_
-                      , sm_istart_
-                      , sm_icount_ :: Int
-                      }
-
-
-data Mesh = Mesh{ vertices_ :: (Int,GL.BufferObject)
-                , indices_  :: [Word16]
-                , renderpasses_ :: [RenderPass]
-                , submeshes_    :: [SubMesh]
---              , textures_     :: [GL.Texture.Texture]
-                }
-
-newMesh :: M2Model -> IO Mesh
-newMesh mdl = do [vbo] <- GL.genObjectNames 1
-                 GL.bindBuffer GL.ArrayBuffer GL.$= Just vbo
-                 -- alloca buffer data
-                 -- 16 bytes for position
-                 -- 12 bytes for normal
-                 -- 8  bytes for texcoord
-                 let len = length (m_vertices_ mdl)
-                 GL.bufferData GL.ArrayBuffer GL.$= (fromIntegral $ len * 36, nullPtr, GL.StaticDraw)
-                 GL.withMappedBuffer GL.ArrayBuffer GL.WriteOnly	
-                   (\ptr -> let pos = map (to4 . fix . vd_pos_) (m_vertices_ mdl)
-                                nor = map (fix . vd_normal_)    (m_vertices_ mdl)
-                                tcd = map vd_texcoords_         (m_vertices_ mdl)
-                            in  do withArrayLen pos (\l s -> copyArray ptr   s l)
-                                   let ptr'  = ptr `plusPtr` (len * 16)
-                                   withArrayLen nor (\l s -> copyArray ptr'  s l)
-                                   let ptr'' = ptr `plusPtr` (len * 28)
-                                   withArrayLen tcd (\l s -> copyArray ptr'' s l))
-                   (\err -> assert False $ return ())
-                 let sm = map (\gs -> SubMesh (mg_vstart_ gs) (mg_vcount_ gs)
-                                              (mg_istart_ gs) (mg_icount_ gs)
-                              ) (m_geoset_ mdl)
-
-                 {--
-                 -- load the textures, for test purpose
-                 ts <- let fromFT (M2Model.Texture f _) = "../tmp/" ++ f
-                       in  mapM (newTexture TEX_TYPE_2D) =<< mapM (newBLP . fromFT) (m_textures_ mdl)
-                 --}
-
-                 return $ Mesh (len,vbo) (map fromIntegral (m_indices_ mdl)) (m_renderpass_ mdl) sm
-
+newMesh :: M2Model -> World GLResource Mesh
+newMesh mdl = do mapM_ loadResource tex
+                 lift $ do [vbo] <- GL.genObjectNames 1
+                           GL.bindBuffer GL.ArrayBuffer GL.$= Just vbo
+                           -- alloca buffer data
+                           -- 16 bytes for position
+                           -- 12 bytes for normal
+                           -- 8  bytes for texcoord
+                           let len = length (m_vertices_ mdl)
+                           GL.bufferData GL.ArrayBuffer GL.$= (fromIntegral $ len * 36, nullPtr, GL.StaticDraw)
+                           GL.withMappedBuffer GL.ArrayBuffer GL.WriteOnly	
+                                 (\ptr -> let pos = map (to4 . fix . vd_pos_) (m_vertices_ mdl)
+                                              nor = map (fix . vd_normal_)    (m_vertices_ mdl)
+                                              tcd = map vd_texcoords_         (m_vertices_ mdl)
+                                          in  do withArrayLen pos (\l s -> copyArray ptr   s l)
+                                                 let ptr'  = ptr `plusPtr` (len * 16)
+                                                 withArrayLen nor (\l s -> copyArray ptr'  s l)
+                                                 let ptr'' = ptr `plusPtr` (len * 28)
+                                                 withArrayLen tcd (\l s -> copyArray ptr'' s l))
+                                 (\err -> assert False $ return ())
+                           let sm = map (\gs -> SubMesh (mg_vstart_ gs) (mg_vcount_ gs)
+                                                        (mg_istart_ gs) (mg_icount_ gs)
+                                        ) (m_geoset_ mdl)
+                           return $ Mesh (len,vbo) (map fromIntegral (m_indices_ mdl)) (m_renderpass_ mdl) sm tex
     where
       fix (Vector3 x y z) = Vector3 x z (-y)
       to4 (Vector3 x y z) = Vector4 x y z 1
+      tex = map fromFT (m_textures_ mdl)
+      fromFT (M2Model.Texture f _) = "MPQ:" ++ f
 
-
-renderMesh :: Mesh -> IO ()
+renderMesh :: Mesh -> World GLResource ()
 renderMesh mesh = mapM_ (\r -> withMaterial r (draw (r_geoset_ r))) (renderpasses_ mesh)
     where 
       draw idx = let sm  = submeshes_ mesh !! idx
@@ -81,4 +64,5 @@ renderMesh mesh = mapM_ (\r -> withMaterial r (draw (r_geoset_ r))) (renderpasse
                           (GL.drawRangeElements GL.Triangles rng (fromIntegral $ sm_icount_ sm) GL.UnsignedShort)
                         GL.clientState GL.VertexArray  GL.$= GL.Disabled
 
-      withMaterial rp act = withTexture (textures_ mesh !! r_tex_ rp) act
+      withMaterial rp act = do Just (GLTexture tex) <- findResource (textures_ mesh !! r_tex_ rp)
+                               lift $ withTexture tex act

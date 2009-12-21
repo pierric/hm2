@@ -9,6 +9,8 @@ import Data.Array
 import Data.Binary.Get
 import Data.Word
 import Control.Monad(ap,liftM3)
+
+import FileSystem
 import Utils
 
 data CTYPE = DXT1
@@ -39,24 +41,23 @@ data Header   = Header{ id_     :: String
 
 newBLP :: FilePath -> IO BLP
 newBLP fpath = do 
-  archive <- BS.readFile fpath
-  let hdr = decode archive :: Header
-  assert (id_ hdr == "BLP2" && typ_ hdr == 1) (return ())
-  let sz       = (width_ hdr, height_ hdr)
+  archive <- findFile fpath
+  let hdr      = decode archive :: Header
+      sz       = (width_ hdr, height_ hdr)
       palette  = listArray (0,255) $ getBunchOf 256 getWord32le (BS.drop 148 archive)
       dat      = map (\(o,s) -> SBS.concat $ BS.toChunks $ BS.take (fromIntegral s) $ BS.drop (fromIntegral o) archive)
                      (filter (\(o,s) -> o>0&&s>0) $ zip (offset_ hdr) (sizes_ hdr))
-  case (attr_ hdr) of
-    (1,0,_) -> return $ BLPp fpath palette sz 0 dat
-    (1,1,_) -> return $ BLPp fpath palette sz 1 dat
-    (1,8,_) -> return $ BLPp fpath palette sz 8 dat
-    (2,0,_) -> return $ BLPc fpath DXT1 sz dat
-    (2,1,_) -> return $ BLPc fpath DXT1 sz dat
-    (2,4,1) -> return $ BLPc fpath DXT3 sz dat
-    (2,8,1) -> return $ BLPc fpath DXT3 sz dat
-    (2,8,7) -> return $ BLPc fpath DXT5 sz dat
-    (a,b,c) -> assert False (do putStrLn $ printf "Unknown blp format:%d,%d,%d" a b c 
-                                return undefined)
+  assert (id_ hdr == "BLP2" && typ_ hdr == 1) (return ())
+  return $ case (attr_ hdr) of
+             (1,0,_) -> BLPp fpath palette sz 0 dat
+             (1,1,_) -> BLPp fpath palette sz 1 dat
+             (1,8,_) -> BLPp fpath palette sz 8 dat
+             (2,0,_) -> BLPc fpath DXT1 sz dat
+             (2,1,_) -> BLPc fpath DXT1 sz dat
+             (2,4,1) -> BLPc fpath DXT3 sz dat
+             (2,8,1) -> BLPc fpath DXT3 sz dat
+             (2,8,7) -> BLPc fpath DXT5 sz dat
+             (a,b,c) -> assert False undefined 
 
 instance Binary Header where
     get   = return Header `ap` (sequence [getCChar,getCChar,getCChar,getCChar])

@@ -4,8 +4,19 @@ import Graphics.UI.GLUT
 import Graphics.Rendering.OpenGL.GL
 import Graphics.Rendering.GLU.Raw
 import System.Exit
+import System.IO.Unsafe
+import Data.IORef
+import qualified Data.Map as M
+import Control.Monad.State
+
 import M2Model
-import GL.Mesh
+import Resource
+import GL.Resource
+import GL.ResourceLoader
+import GL.Mesh(renderMesh)
+
+world = unsafePerformIO $ newIORef undefined
+chaos = WorldState (ResourceLibrary glResourceLoader M.empty)
 
 main = do
   getArgsAndInitialize
@@ -13,9 +24,11 @@ main = do
   initialWindowSize  $= Size 300 300
   initialWindowPosition $= Position 0 0
   createWindow "M2"
+  
+  (GLMesh m,w0) <- runStateT (loadResource "MPQ:world\\goober\\g_xmastree.m2") chaos
+  world $= w0
+
   clearColor      $= Color4 0.5 0.5 0.5 1.0
-  -- m <- newModel "../tmp/world/azeroth/burningsteppes/passivedoodads/rocks/lavarock01.m2" >>= newMesh
-  m <- newModel "../tmp/world/goober/g_xmastree.m2" >>= newMesh
   displayCallback $= render m
   idleCallback    $= Just (render m)
   reshapeCallback $= Just reshape
@@ -44,5 +57,6 @@ render m = do
   gluLookAt 0.0 0.0 8.0
             0.0 2.0 0.0
             0.0 1.0 0.0
-  renderMesh m
+  w <- readIORef world
+  evalStateT (renderMesh m) w
   swapBuffers

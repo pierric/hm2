@@ -11,19 +11,9 @@ import Foreign.Storable(poke)
 import Foreign.Marshal.Array(allocaArray)
 import Foreign.ForeignPtr
 import qualified Graphics.Rendering.OpenGL.GL as GL
-import qualified Graphics.Rendering.OpenGL.Raw as GLR
 
 import BLP
-
-data Texture = Texture{ -- tx_name_   :: String
-                        tx_type_   :: TextureType
-                      , tx_object_ :: GL.TextureObject 
-                      }
-
-data TextureType = TEX_TYPE_1D
-                 | TEX_TYPE_2D
-                 | TEX_TYPE_3D
-                 | TEX_TYPE_CUBE_MAP
+import GL.Types
 
 newTexture :: TextureType -> BLP -> IO Texture
 newTexture typ raw = do
@@ -69,19 +59,3 @@ newTexture typ raw = do
                                         (GL.CompressedPixelData (glCompressedTextureFormat ctype) 
                                                                 (fromIntegral $ hb - lb) 
                                                                 pb)))
-
-withTexture tex act = do GL.textureBinding typ GL.$= Just (tx_object_ tex)
-                         act
-                         GL.textureBinding typ GL.$= Nothing
-    where
-      typ = glTextureType (tx_type_ tex)
-
-glTextureType TEX_TYPE_1D = GL.Texture1D
-glTextureType TEX_TYPE_2D = GL.Texture2D
-glTextureType TEX_TYPE_3D = GL.Texture3D
-glTextureType TEX_TYPE_CUBE_MAP = GL.TextureCubeMap
-
-glCompressedTextureFormat DXT1 = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT1 
-glCompressedTextureFormat DXT3 = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT3
-glCompressedTextureFormat DXT5 = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT5
-

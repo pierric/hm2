@@ -7,9 +7,12 @@ import Data.Tensor
 import Data.Ord
 import qualified Data.ByteString.Lazy as BS
 import Control.Exception
+
 import ModelDef
 import Animated
+import FileSystem
 import Utils
+
 
 data M2Model = M2Model{ m_name_ :: String
                       , m_global_sequence_ :: [Int]
@@ -46,7 +49,7 @@ type Attachment = AttachmentDef
 
 newModel :: FilePath -> IO M2Model
 newModel fpath = do 
-  archive <- BS.readFile fpath
+  archive <- findFile fpath
   let def  = decode archive :: Header
   assert (nViews_ def > 0) (return ())
              
@@ -68,8 +71,7 @@ newModel fpath = do
   -- textures
   let textures = assert (nTextures_ def < 32) $ 
                  map (\def -> case td_type_ def of
-                                0 -> Texture (bunchOf (td_nameLen_ def)
-                                             (td_nameOfs_ def) (get :: Get Char))
+                                0 -> Texture (bunchOf (td_nameLen_ def - 1) (td_nameOfs_ def) (get :: Get Char))
                                              (td_flags_ def)
                                 _ -> CharTexture (td_type_ def) (td_flags_ def)
                      ) txdf
@@ -105,7 +107,7 @@ lod :: FilePath -> IO ([Int],[GeosetDef],[TexUnitDef])
 lod fname = do 
   let (s,n) = splitAt 3 $ reverse fname
   let lname = assert (s=="2M." || s=="2m.") (reverse $ "niks.00" ++ n)
-  archive <- BS.readFile lname
+  archive <- findFile lname
   let view = decode archive :: ViewDef
   let bunchOf cnt offset g = getBunchOf cnt g (BS.drop (fromIntegral offset) archive)
   let idlk = bunchOf (mv_nIndex_ view) (mv_ofsIndex_ view) getUShort
