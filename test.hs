@@ -30,14 +30,10 @@ main = do
   initialWindowSize  $= Size 300 300
   initialWindowPosition $= Position 0 0
   createWindow "M2"
-  
+
+  let ma = "MPQ:World\\Expansion02\\Doodads\\Generic\\TUSKARR\\Tables\\TS_Long_Table_01.m2"
   (GLMesh m,w0) <- runStateT (loadResource "MPQ:world\\goober\\g_xmastree.m2") chaos
   world $= w0
-
-  dt <- evalStateT (findResource "MPQ:WORLD\\GOOBER\\MM_XMAS_TREEBRANCH_01.BLP") w0
-  case dt of
-    Just (GLTexture dt) -> saveTexture dt
-    Nothing -> putStrLn "not found"
 
   clearColor $= Color4 0.4 0.4 0.4 1
   clearDepth $= 1

@@ -6,26 +6,27 @@ import Data.ByteString.Internal
 import Data.Word
 import Data.Array(Array,(!))
 import Control.Monad(forM_)
+import Control.Exception
 import Foreign.Ptr(Ptr,plusPtr)
 import Foreign.Storable(poke)
 import Foreign.Marshal.Array(allocaArray)
 import Foreign.ForeignPtr
 import qualified Graphics.Rendering.OpenGL.GL as GL
 import qualified Graphics.Rendering.OpenGL.Raw as GLR
+import qualified Graphics.Rendering.OpenGL.GLU as GLU
+import Codec.Image.STB as STB
 import Codec.Image.DDS as DDS
 
 import BLP
 import GL.Types
-
-import qualified Graphics.Rendering.OpenGL.GLU as GLU
-import Codec.Image.STB as STB
-import Graphics.GD as GD
-import Foreign.Marshal.Array
-import Debug.Trace
 import FileSystem
 import Resource
-import Text.Printf
-import Data.Bits
+
+--import Graphics.GD as GD
+--import Foreign.Marshal.Array
+--import Debug.Trace
+--import Text.Printf
+--import Data.Bits
 
 newTexture :: ResourceId -> IO Texture
 newTexture fpath = do 
@@ -46,8 +47,8 @@ newTextureFromBLP typ raw = do
   [texture] <- GL.genObjectNames 1
   GL.textureBinding (glTextureType typ) GL.$= Just texture
   case raw of
-    BLPp n pal size@(w,h) ab raw -> trace ("paletted "   ++ n) $ allocaArray (w*h) (setupLayerP pal size ab raw)
-    BLPc n cty size@(w,h) raw    -> trace ("compressed " ++ n) $ setupLayerC cty size raw
+    BLPp n pal size@(w,h) ab raw -> allocaArray (w*h) (setupLayerP pal size ab raw)
+    BLPc n cty size@(w,h) raw    -> setupLayerC cty size raw
   GL.textureFilter (glTextureType typ) GL.$= ((GL.Linear',Nothing),GL.Linear')
   GL.textureWrapMode GL.Texture2D GL.R GL.$= (GL.Repeated, GL.Clamp)
   GL.textureWrapMode GL.Texture2D GL.S GL.$= (GL.Repeated, GL.ClampToEdge)
@@ -92,12 +93,18 @@ newTextureFromBLP typ raw = do
                                        (GL.PixelData GL.RGBA GL.UnsignedByte pp))
               else let (buf,offset,len) = toForeignPtr r
                        glctype = (glCompressedTextureFormat ctype)
-                   in  withForeignPtr buf (\pb ->
+                       blksz   = case ctype of DXT1' -> 8
+                                               _     -> 16
+                       sz      = ((w'+3)`div`4) * ((h'+3)`div`4) * blksz
+                       (nw,nh) = if len == 8 && sz == 16 && w'==2 && h'==8 then (2,4) else (w',h')
+                   in  withForeignPtr buf (\pb -> do
                          GL.compressedTexImage2D Nothing GL.NoProxy l 
-                                                 (GL.TextureSize2D (fromIntegral w') (fromIntegral h')) 0
+                                                 (GL.TextureSize2D (fromIntegral nw) (fromIntegral nh)) 0
                                                  (GL.CompressedPixelData glctype (fromIntegral len) 
-                                                 (pb `plusPtr` offset))))
-
+                                                 (pb `plusPtr` offset))
+                         err <- GL.get GLU.errors
+                         forM_ err (putStrLn . show)))
+{--
 saveTexture :: Texture -> IO ()
 saveTexture (Texture typ (w,h) tex) = do err <- GL.get GLU.errors
                                          forM_ err (putStrLn . ("a"++) . show)
@@ -121,6 +128,7 @@ saveTexture (Texture typ (w,h) tex) = do err <- GL.get GLU.errors
                                            )
                                          GL.textureBinding target GL.$= old
     where target = glTextureType typ
+--}
 
 glCompressedTextureFormat DXT1' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT1 
 glCompressedTextureFormat DXT3' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT3

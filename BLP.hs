@@ -45,7 +45,8 @@ newBLP fpath = do
   let hdr      = decode archive :: Header
       sz       = (width_ hdr, height_ hdr)
       palette  = listArray (0,255) $ getBunchOf 256 getWord32le (BS.drop 148 archive)
-      dat      = map (\(o,s) -> SBS.concat $ BS.toChunks $ BS.take (fromIntegral s) $ BS.drop (fromIntegral o) archive)
+      dat      = map (\(o,s) -> SBS.copy $ SBS.concat $ BS.toChunks $ 
+                                BS.take (fromIntegral s) $ BS.drop (fromIntegral o) archive)
                      (filter (\(o,s) -> o>0&&s>0) $ zip (offset_ hdr) (sizes_ hdr))
   assert (id_ hdr == "BLP2" && typ_ hdr == 1) (return ())
   return $ case (attr_ hdr) of
