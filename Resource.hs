@@ -7,8 +7,6 @@ import Control.Monad.State
 import Control.Exception
 import Control.Category((>>>))
 
-import FileSystem
-
 data WorldState res = WorldState { _resLibrary :: ResourceLibrary res }
 type World res = StateT (WorldState res) IO
 

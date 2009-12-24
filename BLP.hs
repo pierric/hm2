@@ -13,9 +13,9 @@ import Control.Monad(ap,liftM3)
 import FileSystem
 import Utils
 
-data CTYPE = DXT1
-           | DXT3
-           | DXT5
+data CTYPE = DXT1'
+           | DXT3'
+           | DXT5'
            deriving Show
 data BLP   = BLPp{ blp_name        :: String
                  , blp_palette_    :: Array Int Word32
@@ -52,11 +52,11 @@ newBLP fpath = do
              (1,0,_) -> BLPp fpath palette sz 0 dat
              (1,1,_) -> BLPp fpath palette sz 1 dat
              (1,8,_) -> BLPp fpath palette sz 8 dat
-             (2,0,_) -> BLPc fpath DXT1 sz dat
-             (2,1,_) -> BLPc fpath DXT1 sz dat
-             (2,4,1) -> BLPc fpath DXT3 sz dat
-             (2,8,1) -> BLPc fpath DXT3 sz dat
-             (2,8,7) -> BLPc fpath DXT5 sz dat
+             (2,0,_) -> BLPc fpath DXT1' sz dat
+             (2,1,_) -> BLPc fpath DXT1' sz dat
+             (2,4,1) -> BLPc fpath DXT3' sz dat
+             (2,8,1) -> BLPc fpath DXT3' sz dat
+             (2,8,7) -> BLPc fpath DXT5' sz dat
              (a,b,c) -> assert False undefined 
 
 instance Binary Header where

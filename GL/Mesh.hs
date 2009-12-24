@@ -7,6 +7,7 @@ import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
 import Control.Exception
+import Control.Monad(when)
 import Control.Monad.Trans(lift)
 
 import Resource
@@ -47,22 +48,61 @@ newMesh mdl = do mapM_ loadResource tex
       fromFT (M2Model.Texture f _) = "MPQ:" ++ f
 
 renderMesh :: Mesh -> World GLResource ()
-renderMesh mesh = mapM_ (\r -> withMaterial r (draw (r_geoset_ r))) (renderpasses_ mesh)
+renderMesh mesh = -- (\r -> withMaterial r (draw (r_geoset_ r))) (renderpasses_ mesh !! 5)
+                  mapM_ (\r -> withMaterial r (draw (r_geoset_ r))) (renderpasses_ mesh)
     where 
       draw idx = let sm  = submeshes_ mesh !! idx
                      rng = (fromIntegral $ sm_vstart_ sm, fromIntegral $ sm_vstart_ sm + sm_vcount_ sm)
                      (len, vbo) = vertices_ mesh
+                     (is,ic) = (sm_istart_ sm, sm_icount_ sm)
                  in  do GL.bindBuffer   GL.ArrayBuffer GL.$= Just vbo
                         GL.clientState  GL.VertexArray GL.$= GL.Enabled
                         GL.arrayPointer GL.VertexArray GL.$=
                           GL.VertexArrayDescriptor 4 GL.Float 0 (intPtrToPtr 0 :: Ptr GL.GLint)
+                        GL.clientState  GL.NormalArray GL.$= GL.Enabled
                         GL.arrayPointer GL.NormalArray GL.$= 
-                          GL.VertexArrayDescriptor 3 GL.Float 0 (intPtrToPtr (fromIntegral $ len * 16) :: Ptr GL.GLint)
+                          GL.VertexArrayDescriptor 3 GL.Float 0 (intPtrToPtr (fromIntegral $ len * 16) :: Ptr ())
+                        GL.clientState  GL.TextureCoordArray GL.$= GL.Enabled
                         GL.arrayPointer GL.TextureCoordArray GL.$= 
-                          GL.VertexArrayDescriptor 2 GL.Float 0 (intPtrToPtr (fromIntegral $ len * 28) :: Ptr GL.GLint)
-                        withArray (indices_ mesh) 
-                          (GL.drawRangeElements GL.Triangles rng (fromIntegral $ sm_icount_ sm) GL.UnsignedShort)
-                        GL.clientState GL.VertexArray  GL.$= GL.Disabled
+                          GL.VertexArrayDescriptor 2 GL.Float 0 (intPtrToPtr (fromIntegral $ len * 28) :: Ptr ())
+                        withArray (take ic $ drop is $ indices_ mesh) 
+                          (GL.drawRangeElements GL.Triangles rng (fromIntegral ic) GL.UnsignedShort)
+                        GL.clientState GL.VertexArray       GL.$= GL.Disabled
+                        GL.clientState GL.NormalArray       GL.$= GL.Disabled
+                        GL.clientState GL.TextureCoordArray GL.$= GL.Disabled
 
       withMaterial rp act = do Just (GLTexture tex) <- findResource (textures_ mesh !! r_tex_ rp)
-                               lift $ withTexture tex act
+                               lift $ do 
+                                 case r_blendmode_ rp of
+                                   0 -> return ()
+                                   1 -> GL.alphaFunc    GL.$= Just (GL.Gequal, 0.7)
+                                   2 -> do GL.blend     GL.$= GL.Enabled 
+                                           GL.blendFunc GL.$= (GL.SrcAlpha, GL.OneMinusSrcAlpha)
+                                   3 -> do GL.blend     GL.$= GL.Enabled
+                                           GL.blendFunc GL.$= (GL.SrcColor, GL.One)
+                                   4 -> do GL.blend     GL.$= GL.Enabled
+                                           GL.blendFunc GL.$= (GL.SrcAlpha, GL.One)
+                                   5 -> do GL.blend     GL.$= GL.Enabled
+                                           GL.blendFunc GL.$= (GL.DstColor, GL.SrcColor)
+                                   6 -> do GL.blend     GL.$= GL.Enabled
+                                           GL.blendFunc GL.$= (GL.DstColor, GL.SrcColor)
+                                   _ -> do putStrLn "Unknown blendmode" 
+                                           assert False (return ())
+                                 when (r_swrap_ rp) (GL.textureWrapMode GL.Texture2D GL.S GL.$= (GL.Repeated, GL.Repeat))
+                                 when (r_twrap_ rp) (GL.textureWrapMode GL.Texture2D GL.T GL.$= (GL.Repeated, GL.Repeat))
+                                 when (r_noZWrite_ rp) (GL.depthMask GL.$= GL.Disabled)
+                                 when (r_useEnvMap_ rp) (putStrLn "requires environment map")
+                                 when (r_texanim_ rp>=0) (putStrLn "requires texture animation")
+                                 when (r_unlit_ rp) (GL.lighting GL.$= GL.Disabled)
+                                 GL.textureBinding (glTextureType (tx_type_ tex)) GL.$= Just (tx_object_ tex)
+                                 act
+                                 GL.blend     GL.$= GL.Disabled
+                                 GL.alphaFunc GL.$= Nothing
+                                 when (r_noZWrite_ rp) (GL.depthMask GL.$= GL.Enabled)
+                                 when (r_unlit_ rp)    (GL.lighting  GL.$= GL.Enabled)
+                                 when (r_cull_ rp)     (GL.cullFace  GL.$= Nothing)
+                                 when (r_swrap_ rp)
+                                      (GL.textureWrapMode GL.Texture2D GL.S GL.$= (GL.Repeated, GL.ClampToEdge))
+                                 when (r_twrap_ rp)
+                                      (GL.textureWrapMode GL.Texture2D GL.T GL.$= (GL.Repeated, GL.ClampToEdge))
+                                 
