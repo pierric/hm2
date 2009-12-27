@@ -1,16 +1,16 @@
-module GL.ResourceLoader where
+module Data.WOW.GL.ResourceLoader where
 
 import Control.Monad.Trans(lift)
 import Data.Char
 
-import FileSystem
-import Resource
-import M2Model
-import BLP
-import GL.Types
-import GL.Mesh
-import GL.Texture
-import GL.Resource
+import {-# SOURCE #-}Data.WOW.World
+import Data.WOW.FileSystem
+import Data.WOW.M2Model
+import Data.WOW.BLP
+import Data.WOW.GL.Types
+import Data.WOW.GL.Mesh
+import Data.WOW.GL.Texture
+import Data.WOW.GL.Resource
 
 import Debug.Trace
 import qualified System.FilePath.Windows as W

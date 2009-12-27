@@ -1,5 +1,5 @@
 {-# OPTIONS -XFlexibleInstances #-}
-module ModelDef where
+module Data.WOW.ModelDef where
 
 import Data.Binary
 import Data.Binary.Get
@@ -9,7 +9,8 @@ import Data.Int
 import Control.Monad(ap)
 import Data.Tensor
 import Text.Printf
-import Utils
+
+import Data.WOW.Utils
 
 data Header = Header{ id_ :: String
                     , version_ :: [Int]

@@ -1,4 +1,4 @@
-module BLP where
+module Data.WOW.BLP where
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString as SBS
@@ -10,8 +10,8 @@ import Data.Binary.Get
 import Data.Word
 import Control.Monad(ap,liftM3)
 
-import FileSystem
-import Utils
+import Data.WOW.FileSystem
+import Data.WOW.Utils
 
 data CTYPE = DXT1'
            | DXT3'

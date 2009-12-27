@@ -1,4 +1,4 @@
-module FileSystem(findFile, extension, localFilePath) where
+module Data.WOW.FileSystem(findFile, extension, localFilePath) where
 
 import Text.Regex.PCRE.Light.Char8
 import qualified System.FilePath.Windows as W
@@ -8,9 +8,10 @@ import Data.Maybe
 import Data.Char
 import Data.Monoid
 import Control.Exception
-import Resource
-
 import Debug.Trace
+
+import {-# SOURCE #-} Data.WOW.World
+
 
 -- Basic file system interfaces
 -- uri is indentified by the prefix: MPQ, FILE, etc.

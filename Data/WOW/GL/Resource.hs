@@ -1,7 +1,6 @@
-module GL.Resource where
+module Data.WOW.GL.Resource where
 
-import Resource
-import GL.Types
+import Data.WOW.GL.Types
 
 data GLResource = GLMesh Mesh
                 | GLTexture Texture

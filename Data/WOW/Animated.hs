@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeFamilies, EmptyDataDecls, FlexibleInstances #-}
-module Animated where
+module Data.WOW.Animated where
 
 import Data.Tensor
 import Data.Binary(get,Get)
@@ -7,9 +7,10 @@ import Control.Exception
 import qualified Data.ByteString.Lazy as BS
 import Control.Monad(ap)
 import qualified Data.VectorSpace as V
-import Utils
-import Quaternion
-import ModelDef
+
+import Data.WOW.Utils
+import Data.WOW.Quaternion
+import Data.WOW.ModelDef
 
 data Animated a = AnimatedNone   { a_global_ :: Maybe Int
                                  , a_times_  :: [[Int]]

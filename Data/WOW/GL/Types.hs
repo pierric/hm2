@@ -1,12 +1,12 @@
-module GL.Types where
+module Data.WOW.GL.Types where
 
 import Data.Word
 import qualified Graphics.Rendering.OpenGL.GL as GL
 
 
-import M2Model(RenderPass)
-import BLP(CTYPE(..))
-import Resource(ResourceId)
+import Data.WOW.M2Model(RenderPass)
+import Data.WOW.BLP(CTYPE(..))
+import {-# SOURCE #-} Data.WOW.World(ResourceId)
 
 data SubMesh = SubMesh{ sm_vstart_ 
                       , sm_vcount_

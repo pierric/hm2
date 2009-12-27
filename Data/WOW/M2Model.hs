@@ -1,4 +1,4 @@
-module M2Model where
+module Data.WOW.M2Model where
 
 import Data.Bits((.&.))
 import Data.Binary
@@ -8,10 +8,10 @@ import Data.Ord
 import qualified Data.ByteString.Lazy as BS
 import Control.Exception
 
-import ModelDef
-import Animated
-import FileSystem
-import Utils
+import Data.WOW.ModelDef
+import Data.WOW.Animated
+import Data.WOW.FileSystem
+import Data.WOW.Utils
 
 
 data M2Model = M2Model{ m_name_ :: String

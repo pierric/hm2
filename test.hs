@@ -10,19 +10,17 @@ import Data.IORef
 import qualified Data.Map as M
 import Control.Monad.State
 
-import M2Model
-import Resource
-import GL.Resource
-import GL.ResourceLoader
-import GL.Mesh(renderMesh)
-
-import BLP
-import GL.Types
-import GL.Texture
+import Data.WOW.M2Model
+import Data.WOW.World
+import Data.WOW.GL.Resource
+import Data.WOW.GL.ResourceLoader
+import Data.WOW.GL.Mesh(renderMesh)
+import Data.WOW.BLP
+import Data.WOW.GL.Types
+import Data.WOW.GL.Texture
 
 
 world = unsafePerformIO $ newIORef undefined
-chaos = WorldState (ResourceLibrary glResourceLoader M.empty)
 
 main = do
   getArgsAndInitialize
@@ -32,7 +30,10 @@ main = do
   createWindow "M2"
 
   let ma = "MPQ:World\\Expansion02\\Doodads\\Generic\\TUSKARR\\Tables\\TS_Long_Table_01.m2"
-  (GLMesh m,w0) <- runStateT (loadResource "MPQ:world\\goober\\g_xmastree.m2") chaos
+  let mb = "MPQ:world\\goober\\g_xmastree.m2"
+  let mc = "MPQ:Character\\BloodElf\\Male\\BloodElfMale.m2"
+  let md = "MPQ:creature\\chicken\\chicken.m2"
+  (GLMesh m,w0) <- runStateT (loadResource md) beginning
   world $= w0
 
   clearColor $= Color4 0.4 0.4 0.4 1

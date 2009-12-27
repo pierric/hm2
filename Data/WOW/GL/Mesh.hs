@@ -1,4 +1,4 @@
-module GL.Mesh where
+module Data.WOW.GL.Mesh where
 
 import Data.Word
 import Data.Tensor
@@ -10,12 +10,12 @@ import Control.Exception
 import Control.Monad(when)
 import Control.Monad.Trans(lift)
 
-import Resource
-import M2Model
-import ModelDef
-import GL.Types
-import GL.Texture
-import GL.Resource
+import {-# SOURCE #-} Data.WOW.World
+import Data.WOW.M2Model
+import Data.WOW.ModelDef
+import Data.WOW.GL.Types
+import Data.WOW.GL.Texture
+import Data.WOW.GL.Resource
 
 newMesh :: M2Model -> World GLResource Mesh
 newMesh mdl = do mapM_ loadResource tex
@@ -45,7 +45,7 @@ newMesh mdl = do mapM_ loadResource tex
       fix (Vector3 x y z) = Vector3 x z (-y)
       to4 (Vector3 x y z) = Vector4 x y z 1
       tex = map fromFT (m_textures_ mdl)
-      fromFT (M2Model.Texture f _) = "MPQ:" ++ f
+      fromFT (Data.WOW.M2Model.Texture f _) = "MPQ:" ++ f
 
 renderMesh :: Mesh -> World GLResource ()
 renderMesh mesh = -- (\r -> withMaterial r (draw (r_geoset_ r))) (renderpasses_ mesh !! 5)

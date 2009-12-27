@@ -1,40 +1,12 @@
-{-# LANGUAGE TemplateHaskell, TypeOperators #-}
-module Resource where
+{-# LANGUAGE TemplateHaskell, ExistentialQuantification #-}
+module Data.WOW.Resource where
 
 import Data.Record.Label
 import qualified Data.Map as M
 import Control.Monad.State
 import Control.Exception
 import Control.Category((>>>))
-
-data WorldState res = WorldState { _resLibrary :: ResourceLibrary res }
-type World res = StateT (WorldState res) IO
-
-type ResourceId = String
-data ResourceLoader res  = ResourceLoader { _validate   :: ResourceId -> Bool
-                                          , _new        :: ResourceId -> World res res }
-data ResourceLibrary res = ResourceLibrary{ _loader     :: [ResourceLoader res]
-                                          , _collection :: M.Map ResourceId res }
-
-$(mkLabels [''WorldState,''ResourceLibrary])
-
-loadResource :: ResourceId -> World a a
-loadResource fpath = do res <- findResource fpath
-                        case res of 
-                          -- resource is already loaded
-                          Just x  -> return x
-                          -- load the resource and add it to library
-                          Nothing -> do chk <- getM (resLibrary >>> loader) 
-                                        -- get those valid loaders
-                                        case filter (\ldr -> _validate ldr fpath) chk of
-                                          ldr:_ -> do res <- _new ldr fpath
-                                                      modM (resLibrary >>> collection) (M.insert fpath res)
-                                                      return res
-                                          []    -> assert False undefined
-
-findResource :: ResourceId -> World a (Maybe a)
-findResource id = do lib <- getM (resLibrary >>> collection)
-                     return $ M.lookup id lib
+import {-# SOURCE #-}Data.WOW.World
 
 
 {--

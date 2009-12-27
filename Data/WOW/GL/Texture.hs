@@ -1,4 +1,4 @@
-module GL.Texture where
+module Data.WOW.GL.Texture where
 
 import Data.Bits
 import qualified Data.ByteString as BS
@@ -17,10 +17,10 @@ import qualified Graphics.Rendering.OpenGL.GLU as GLU
 import Codec.Image.STB as STB
 import Codec.Image.DDS as DDS
 
-import BLP
-import GL.Types
-import FileSystem
-import Resource
+import Data.WOW.BLP
+import Data.WOW.GL.Types
+import Data.WOW.FileSystem
+import {-# SOURCE #-} Data.WOW.World
 
 --import Graphics.GD as GD
 --import Foreign.Marshal.Array

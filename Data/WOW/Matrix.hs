@@ -1,4 +1,4 @@
-module Matrix where
+module Data.WOW.Matrix where
 
 import Data.Array
 import Data.Tensor

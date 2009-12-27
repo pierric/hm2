@@ -1,27 +1,31 @@
 {-# OPTIONS -XFlexibleInstances -XTypeFamilies #-}
-module Utils where
+module Data.WOW.Utils where
 
 import Data.Binary
 import Data.Binary.IEEE754
 import Data.Binary.Get
-import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Lazy.Char8 as BS
+import Data.ByteString.Internal(w2c)
 import Data.Int
 import Data.Tensor
 import Control.Monad(ap)
 import Data.VectorSpace
 
-import Quaternion
+import Data.WOW.Quaternion
 
 getCChar  :: Get Char
 getCChar  = get
-getUChar  :: Get Int
+getUChar  :: Integral i => Get i
 getUChar  = fmap fromIntegral getWord8
-getUShort :: Get Int
+getUShort :: Integral i => Get i
 getUShort = fmap (fromIntegral . (fromIntegral :: Word16 -> Int16)) getWord16le
-getUInt   :: Get Int
+getUInt   :: Integral i => Get i
 getUInt   = fmap fromIntegral getWord32le
 getFloat  :: Get Float
 getFloat  = getFloat32le
+
+getString :: Get String
+getString = fmap BS.unpack getLazyByteStringNul
 
 getBunchOf :: Int -> Get a -> BS.ByteString -> [a]
 getBunchOf cnt g content = runGet (sequence $ replicate cnt g) content

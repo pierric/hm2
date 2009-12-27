@@ -1,10 +1,11 @@
 {-# OPTIONS -XTypeFamilies -XGeneralizedNewtypeDeriving #-}
-module Quaternion where
+module Data.WOW.Quaternion where
 
 import Data.Cross
 import Data.VectorSpace
 import Data.Array
-import Matrix
+
+import Data.WOW.Matrix
 
 newtype Quaternion = Quaternion (Float,Float,Float,Float) deriving (InnerSpace,AdditiveGroup)
 
