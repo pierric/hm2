@@ -1,4 +1,4 @@
-module Data.WOW.FileSystem(findFile, extension, localFilePath) where
+module Data.WOW.FileSystem(findFile, checkExt, localFilePath) where
 
 import Text.Regex.PCRE.Light.Char8
 import qualified System.FilePath.Windows as W
@@ -16,24 +16,26 @@ import {-# SOURCE #-} Data.WOW.World
 -- Basic file system interfaces
 -- uri is indentified by the prefix: MPQ, FILE, etc.
 
-findFile :: ResourceId -> IO BS.ByteString
-findFile fpath = fromJust $ match local fpath [] ~> BS.readFile
-                        ||| match mpq   fpath [] ~> BS.readFile . joinPath . (prefix ++) . W.splitDirectories . lower
-                        ||| Just (assert False undefined)
+findFile :: ResourceId -> IO (Maybe BS.ByteString)
+findFile fpath = fromJust $ match local fpath [] ~> myhandle . BS.readFile
+                        ||| match mpq   fpath [] ~> myhandle . BS.readFile
+                                                    . joinPath . (prefix ++) . W.splitDirectories . lower
+                        ||| Just (putStrLn ("unknown resource type[" ++ fpath ++"]") >> return Nothing)
     where
       prefix = ["..", "tmp"]
+      myhandle x = fmap Just x `Prelude.catch` (\_ -> return Nothing)
 
-extension :: ResourceId -> String
-extension fpath = fromJust $ match local fpath [] ~> takeExtension
-                         ||| match mpq   fpath [] ~> W.takeExtension
-                         ||| Just (assert False undefined)
+checkExt :: FilePath -> String -> Bool
+checkExt fpath ext = fromJust $ match local fpath [] ~> (== lower ext) . lower . takeExtension
+                            ||| match mpq   fpath [] ~> (== lower ext) . lower . W.takeExtension
+                            ||| Just False
 
 localFilePath :: ResourceId -> String
 localFilePath fpath = fromJust $ match local fpath [] ~> id ||| Just (assert False undefined)
 
-mpq    = compile "^MPQ:(?P<>[\\w\\d]+(\\\\[\\w\\d.]+)*)$" [no_auto_capture]
-local  = compile "^FILE:(?P<>.+)$" [no_auto_capture]
-lower  = map toLower
+mpq     = compile "^MPQ:(?P<>[\\w\\d]+(\\\\[\\w\\d.-]+)*)$" [no_auto_capture]
+local   = compile "^FILE:(?P<>.+)$" [no_auto_capture]
+lower   = map toLower
 
 infix  6 ~>
 infixl 4 |||

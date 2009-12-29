@@ -41,7 +41,7 @@ data Header   = Header{ id_     :: String
 
 newBLP :: FilePath -> IO BLP
 newBLP fpath = do 
-  archive <- findFile fpath
+  Just archive <- findFile fpath
   let hdr      = decode archive :: Header
       sz       = (width_ hdr, height_ hdr)
       palette  = listArray (0,255) $ getBunchOf 256 getWord32le (BS.drop 148 archive)

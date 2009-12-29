@@ -14,10 +14,15 @@ import Data.WOW.M2Model
 import Data.WOW.World
 import Data.WOW.GL.Resource
 import Data.WOW.GL.ResourceLoader
-import Data.WOW.GL.Mesh(renderMesh)
+import Data.WOW.GL.Mesh
 import Data.WOW.BLP
 import Data.WOW.GL.Types
 import Data.WOW.GL.Texture
+
+ma = "MPQ:World\\Expansion02\\Doodads\\Generic\\TUSKARR\\Tables\\TS_Long_Table_01.m2"
+mb = "MPQ:world\\goober\\g_xmastree.m2"
+mc = "MPQ:Character\\BloodElf\\Male\\BloodElfMale.m2"
+md = "MPQ:creature\\chicken\\chicken.m2"
 
 
 world = unsafePerformIO $ newIORef undefined
@@ -28,14 +33,6 @@ main = do
   initialWindowSize  $= Size 300 300
   initialWindowPosition $= Position 0 0
   createWindow "M2"
-
-  let ma = "MPQ:World\\Expansion02\\Doodads\\Generic\\TUSKARR\\Tables\\TS_Long_Table_01.m2"
-  let mb = "MPQ:world\\goober\\g_xmastree.m2"
-  let mc = "MPQ:Character\\BloodElf\\Male\\BloodElfMale.m2"
-  let md = "MPQ:creature\\chicken\\chicken.m2"
-  (GLMesh m,w0) <- runStateT (loadResource md) beginning
-  world $= w0
-
   clearColor $= Color4 0.4 0.4 0.4 1
   clearDepth $= 1
   depthFunc  $= Just Less
@@ -46,14 +43,15 @@ main = do
   diffuse  (Light 1) $= Color4 1.0 1.0 1.0 1.0
   position (Light 1) $= Vertex4 0 0 5 (1.0 :: GLfloat)
   light    (Light 1) $= Enabled
-
   hint PerspectiveCorrection $= Nicest
   cullFace  $= Nothing
   -- polygonMode $= (Line, Line)
-
   swapBytes    Pack $= False
   lsbFirst     Pack $= False
   rowAlignment Pack $= 1
+
+  (Just (GLMesh m),w0) <- runStateT (findResource md) beginning
+  world $= w0
 
   displayCallback $= render m
   idleCallback    $= Just (render m)
@@ -84,6 +82,6 @@ render m = do
             0.0 2.0 0.0
             0.0 1.0 0.0
   w <- readIORef world
-  w <- execStateT (renderMesh m) w
+  w <- execStateT (renderAll m) w
   writeIORef world w
   swapBuffers

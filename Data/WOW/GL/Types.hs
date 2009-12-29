@@ -14,12 +14,16 @@ data SubMesh = SubMesh{ sm_vstart_
                       , sm_icount_ :: Int
                       }
 
+type BoneWeight = (Word8, Word8)
 
-data Mesh = Mesh{ vertices_ :: (Int,GL.BufferObject)
-                , indices_  :: [Word16]
+data Mesh = Mesh{ vertices_     :: (Int,GL.BufferObject)
+                , indices_      :: [Word16]
                 , renderpasses_ :: [RenderPass]
                 , submeshes_    :: [SubMesh]
                 , textures_     :: [ResourceId]
+                -- each vertex can be affected by 4 bones
+                -- an array of (bone_index, weight) for each vertex
+                , bone_weight_  :: [(BoneWeight,BoneWeight,BoneWeight,BoneWeight)]
                 }
 
 data Texture = Texture{ -- tx_name_   :: String

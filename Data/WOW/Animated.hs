@@ -33,6 +33,7 @@ data PackedQuaternion
 newAnimated :: KeyStore a => AnimationBlock
                           -> [Int]               -- global sequence
                           -> BS.ByteString       -- MPQ 
+                          -> [BS.ByteString]     -- AnimFile
                           -> Animated a
 newAnimated = newAnimated' undefined
 
@@ -42,12 +43,17 @@ at :: KeyStore a => Animated a
                  -> KeyType a
 at = at' undefined
 
-newAnimated' :: KeyStore a => a -> AnimationBlock -> [Int] -> BS.ByteString -> Animated a
-newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global mpq =
-  let ht    = bunchOf ntime otime getHeader
-      times = map (\(nentry,oentry) -> bunchOf nentry oentry getUShort) ht
+newAnimated' :: KeyStore a => a -> AnimationBlock -> [Int] -> BS.ByteString -> [BS.ByteString] -> Animated a
+newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global mpq anim =
+  let -- get (number of timestamps,offset) paris, from offset of timeblock
+      ht    = bunchOf ntime otime getHeader
+      -- get data for each of (number,offset) pairs
+      times = map (\(i,(nentry,oentry)) -> bunchOf' i nentry oentry getUShort) $ zip [0..] ht
+      -- get (number of keys, offset) paris, from offset of keyblock
       hk    = bunchOf nkey  okey  getHeader
-      keys  = mapM (\(nentry,oentry) -> bunchOf nentry oentry (getKey unused)) hk
+      -- get data for each of (number,offset) paris
+      keys  = map (\(i,(nentry,oentry)) -> bunchOf' i nentry oentry (getKey unused)) $ zip [0..] hk
+      -- global sequence
       gs    = if seq == -1 then Nothing else assert (0 <= seq && seq < length global) (Just $ global!!seq)
   in  case () of 
         _ | typ == 0 || typ == 1 -> 
@@ -56,7 +62,11 @@ newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global 
               AnimatedHermite gs times (every3 keys) (every3 (tail keys)) (every3 (drop 2 keys))
 
     where
-      bunchOf s o g = getBunchOf s g (BS.drop (fromIntegral o) mpq)
+      bunchOf  s o g = getBunchOf s g (BS.drop (fromIntegral o) mpq)
+      bunchOf' i s o g = case anim of
+                           [] -> bunchOf s o g
+                           _  -> assert (i < length anim) $
+                                 getBunchOf s g (BS.drop (fromIntegral o) $ anim !! i)
       getHeader :: Get (Int,Int)
       getHeader = return (,) `ap` getUShort `ap` getUShort
       every3 (x:y:z:r) = x:every3 r

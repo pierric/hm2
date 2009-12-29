@@ -28,23 +28,18 @@ type World res = StateT (WorldState res) IO
 $(mkLabels [''WorldState,''ResourceLibrary])
 
 -- Resource
-loadResource :: ResourceId -> World a a
-loadResource fpath = do res <- findResource fpath
-                        case res of 
-                          -- resource is already loaded
-                          Just x  -> return x
-                          -- load the resource and add it to library
-                          Nothing -> do chk <- getM (resLibrary >>> loader) 
-                                        -- get those valid loaders
-                                        case filter (\ldr -> _validate ldr fpath) chk of
-                                          ldr:_ -> do res <- _new ldr fpath
-                                                      modM (resLibrary >>> collection) (M.insert fpath res)
-                                                      return res
-                                          []    -> assert False undefined
-
 findResource :: ResourceId -> World a (Maybe a)
 findResource id = do lib <- getM (resLibrary >>> collection)
-                     return $ M.lookup id lib
+                     case M.lookup id lib of
+                       Just x  -> return (Just x)
+                       Nothing -> do chk <- getM (resLibrary >>> loader) 
+                                     -- get those valid loaders
+                                     case filter (\ldr -> _validate ldr id) chk of
+                                       ldr:_ -> do res <- _new ldr id
+                                                   modM (resLibrary >>> collection) (M.insert id res)
+                                                   return (Just res)
+                                       []    -> return Nothing
+                                     
 -- World
 $(db [("CreatureSkinDB"  ,"DBFilesClient\\CreatureDisplayInfo.dbc")
      ,("CreatureModelDB" ,"DBFilesClient\\CreatureModelData.dbc"  )])

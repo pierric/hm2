@@ -12,7 +12,6 @@ data ResourceLoader res  = ResourceLoader { _validate   :: ResourceId -> Bool
 data ResourceLibrary res = ResourceLibrary{ _loader     :: [ResourceLoader res]
                                           , _collection :: M.Map ResourceId res }
 
-loadResource :: ResourceId -> World a a
 findResource :: ResourceId -> World a (Maybe a)
 
 -- World

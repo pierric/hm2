@@ -122,6 +122,32 @@ data ColorDef = ColorDef{  cf_color_, cf_opacity_ :: AnimationBlock }
 
 data RenderFlags = RenderFlags{ rf_flags_, rf_blend_ :: Int }
 
+data AnimationDef = AnimationDef{ an_animId_
+	                        , an_subAnimId_
+	                        , an_length_ :: Int
+	                        , an_moveSpeed_ :: Float
+	                        , an_loopType_
+	                        , an_flags_
+	                        , an_d1_
+	                        , an_d2_
+	                        , an_playSpeed_ :: Int
+	                        , an_boxA_
+                                , an_boxB_ :: Vector3 Float
+	                        , an_rad_ :: Float
+	                        , an_nextAnimation_
+	                        , an_index_ :: Int
+                                }
+
+data BoneDef  = BoneDef{ bn_key_    :: Int
+                       , bn_geoid_  :: Int
+                       , bn_tran_   :: AnimationBlock
+                       , bn_rota_   :: AnimationBlock
+                       , bn_scal_   :: AnimationBlock
+                       , bn_pivot_  :: Vector3 Float
+                       , bn_parent_ :: Int 
+                       , bn_billboarded_ :: Bool
+                       }
+
 instance Binary Header where
     get   = return Header 
                        `ap` (sequence [cc,cc,cc,cc])  -- id_
@@ -222,6 +248,34 @@ instance Binary ColorDef where
 instance Binary RenderFlags where
     get   = return RenderFlags `ap` us `ap` us
     put _ = error "cannot save RenderFlags"
+
+instance Binary AnimationDef where
+    get   = return AnimationDef `ap` getUShort -- animID
+                                `ap` getUShort -- subAnimId
+                                `ap` getUInt   -- length
+                                `ap` getFloat  -- moveSpeed
+                                `ap` getUInt   -- looptype
+                                `ap` getUInt   -- flags
+                                `ap` getUInt   -- d1
+                                `ap` getUInt   -- d2
+                                `ap` getUInt   -- playspeed
+                                `ap` get `ap` get -- boxAB
+                                `ap` getFloat     -- rad
+                                `ap` getUShort    -- nextAnim
+                                `ap` getUShort    -- index
+
+
+instance Binary BoneDef where
+    get   = do key  <- getUInt
+               flag <- getUInt
+               par  <- getUShort :: Get Int
+               geo  <- getUShort
+               getUInt
+               t    <- get
+               r    <- get
+               s    <- get
+               p    <- get
+               return $ BoneDef key geo t r s p par (flag == 8)
 
 instance Show Header where
     show h = unlines [ printf "id:%s & version:%d %d %d %d" (id_ h) (v!!0) (v!!1) (v!!2) (v!!3)

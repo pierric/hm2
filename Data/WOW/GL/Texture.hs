@@ -104,6 +104,18 @@ newTextureFromBLP typ raw = do
                                                  (pb `plusPtr` offset))
                          err <- GL.get GLU.errors
                          forM_ err (putStrLn . show)))
+
+glCompressedTextureFormat DXT1' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT1 
+glCompressedTextureFormat DXT3' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT3
+glCompressedTextureFormat DXT5' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT5
+
+supportTextureCompression :: IO Bool
+supportTextureCompression = do
+  list <- GL.get GL.compressedTextureFormats 
+  return $ (glCompressedTextureFormat DXT1' `elem` list) && 
+           (glCompressedTextureFormat DXT3' `elem` list) &&
+           (glCompressedTextureFormat DXT5' `elem` list)
+           
 {--
 saveTexture :: Texture -> IO ()
 saveTexture (Texture typ (w,h) tex) = do err <- GL.get GLU.errors
@@ -129,15 +141,3 @@ saveTexture (Texture typ (w,h) tex) = do err <- GL.get GLU.errors
                                          GL.textureBinding target GL.$= old
     where target = glTextureType typ
 --}
-
-glCompressedTextureFormat DXT1' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT1 
-glCompressedTextureFormat DXT3' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT3
-glCompressedTextureFormat DXT5' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT5
-
-supportTextureCompression :: IO Bool
-supportTextureCompression = do
-  list <- GL.get GL.compressedTextureFormats 
-  return $ (glCompressedTextureFormat DXT1' `elem` list) && 
-           (glCompressedTextureFormat DXT3' `elem` list) &&
-           (glCompressedTextureFormat DXT5' `elem` list)
-           

@@ -16,7 +16,7 @@ import Debug.Trace
 import qualified System.FilePath.Windows as W
 import System.FilePath
 
-glResourceLoader = [ ResourceLoader ((== ".m2") . lower . extension )
+glResourceLoader = [ ResourceLoader (flip checkExt ".m2")
                                     (\fp -> lift (newModel fp) >>= newMesh    >>= return . GLMesh)
 {--
                    , ResourceLoader ((== ".blp") . lower . extension)
@@ -25,8 +25,7 @@ glResourceLoader = [ ResourceLoader ((== ".m2") . lower . extension )
                                             in  trace ("load " ++ f' ++" instead of " ++ fp) $ 
                                                 lift $ newTexture f' >>= return . GLTexture) ]
 --}
-
-                   , ResourceLoader ((== ".blp") . lower . extension ) 
+                   , ResourceLoader (flip checkExt ".blp") 
                                     (\fp -> lift $ newBLP fp >>= newTextureFromBLP TEX_TYPE_2D >>= return . GLTexture) ]
 
     where lower = map toLower

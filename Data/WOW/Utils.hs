@@ -43,6 +43,9 @@ instance Binary (Vector2 Float) where
 triple_f (a,b,c) = Vector3 a b c
 triple_t (Vector3 a b c) = (a,b,c)
 
+quad_f (a,b,c,d) = Vector4 a b c d
+quad_t (Vector4 a b c d) = (a,b,c,d)
+
 instance AdditiveGroup (Vector3 Float) where
     zeroV   = triple_f zeroV
     a ^+^ b = triple_f $ triple_t a ^+^ triple_t b
@@ -50,5 +53,13 @@ instance AdditiveGroup (Vector3 Float) where
 
 instance VectorSpace (Vector3 Float) where
     type Scalar (Vector3 Float) = Float
-    s *^ (Vector3 u v w) = Vector3 (s*^u) (s*^v) (s*^w)
+    s *^ vec = triple_f (s *^ triple_t vec)
     
+instance AdditiveGroup (Vector4 Float) where
+    zeroV   = quad_f zeroV
+    a ^+^ b = quad_f $ quad_t a ^+^ quad_t b
+    negateV = quad_f . negateV . quad_t
+
+instance VectorSpace (Vector4 Float) where
+    type Scalar (Vector4 Float) = Float
+    s *^ vec = quad_f (s *^ quad_t vec)

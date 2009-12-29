@@ -42,7 +42,7 @@ data DbcDesc = DbcDesc{ dbc_rnumber :: !Word32
  
 newDBC :: ResourceId -> IO DbcDesc
 newDBC rid = do
-  bs <- findFile rid
+  Just bs <- findFile rid
   let [nr,nf,sr,ss] = runGet (sequence $ take 4 $ repeat getUInt) bs
       dat = BS.take (sr*nr) $ BS.drop 16 bs
       str = BS.take ss $ BS.drop (16 + sr*nr) bs

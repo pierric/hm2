@@ -1,0 +1,21 @@
+Name:                hm2
+Version:             0.0.0
+Synopsis:            wow model viewer
+Description:         a rewritten of wowmodelviewer in haskell
+License:             BSD3
+License-file:        LICENSE
+Copyright:           (c) 2009 Pierric Wu
+Author:              Pierric Wu
+Maintainer:          w (dot) pierric (at) gmail (dot) com
+Homepage:            http://nonrecursive.org
+Stability:           Experimental
+Category:            Graphics, Data
+Tested-With:         GHC == 6.10.4
+Cabal-Version:       >= 1.2
+Build-Type:          Simple
+
+
+Executable test
+  main-is: test.hs
+  build-depends: base, array, containers, bytestring, monads-fd, transformers, filepath, binary, data-binary-ieee754, fclabels, Tensor, vector-space, pcre-light, OpenGL, OpenGLRaw, GLUT, GLURaw, template-haskell, hdds, stb-image
+  ghc-options: -O0
