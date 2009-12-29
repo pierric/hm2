@@ -6,7 +6,7 @@ import qualified Graphics.Rendering.OpenGL.GL as GL
 
 import Data.WOW.M2Model(RenderPass)
 import Data.WOW.BLP(CTYPE(..))
-import {-# SOURCE #-} Data.WOW.World(ResourceId)
+import Data.WOW.World(ResourceId)
 
 data SubMesh = SubMesh{ sm_vstart_ 
                       , sm_vcount_

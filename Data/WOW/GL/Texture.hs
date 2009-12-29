@@ -20,7 +20,7 @@ import Codec.Image.DDS as DDS
 import Data.WOW.BLP
 import Data.WOW.GL.Types
 import Data.WOW.FileSystem
-import {-# SOURCE #-} Data.WOW.World
+import Data.WOW.World
 
 --import Graphics.GD as GD
 --import Foreign.Marshal.Array

@@ -18,6 +18,8 @@ import Data.WOW.GL.Mesh
 import Data.WOW.BLP
 import Data.WOW.GL.Types
 import Data.WOW.GL.Texture
+import Data.WOW.GL.ResourceLoader
+
 
 ma = "MPQ:World\\Expansion02\\Doodads\\Generic\\TUSKARR\\Tables\\TS_Long_Table_01.m2"
 mb = "MPQ:world\\goober\\g_xmastree.m2"
@@ -26,6 +28,7 @@ md = "MPQ:creature\\chicken\\chicken.m2"
 
 
 world = unsafePerformIO $ newIORef undefined
+beginning = WorldState{ _resLibrary = (ResourceLibrary glResourceLoader M.empty) }
 
 main = do
   getArgsAndInitialize

@@ -263,6 +263,7 @@ instance Binary AnimationDef where
                                 `ap` getFloat     -- rad
                                 `ap` getUShort    -- nextAnim
                                 `ap` getUShort    -- index
+    put _ = error "cannot save AnimationDef"
 
 
 instance Binary BoneDef where
@@ -276,6 +277,7 @@ instance Binary BoneDef where
                s    <- get
                p    <- get
                return $ BoneDef key geo t r s p par (flag == 8)
+    put _ = error "cannot save BoneDef"
 
 instance Show Header where
     show h = unlines [ printf "id:%s & version:%d %d %d %d" (id_ h) (v!!0) (v!!1) (v!!2) (v!!3)

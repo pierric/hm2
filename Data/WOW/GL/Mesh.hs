@@ -12,7 +12,7 @@ import Control.Monad(when)
 import Control.Monad.Trans(lift)
 import Data.VectorSpace((*^), sumV)
 
-import {-# SOURCE #-} Data.WOW.World
+import Data.WOW.World
 import Data.WOW.M2Model
 import Data.WOW.ModelDef
 import Data.WOW.GL.Types
@@ -30,8 +30,8 @@ newMesh mdl = do mapM_ findResource tex
                            let len = length (m_vertices_ mdl)
                            GL.bufferData GL.ArrayBuffer GL.$= (fromIntegral $ len * 36, nullPtr, GL.StaticDraw)
                            GL.withMappedBuffer GL.ArrayBuffer GL.WriteOnly
-                                 (\ptr -> let pos = map (to4 . fix . vd_pos_) (m_vertices_ mdl)
-                                              nor = map (fix . vd_normal_)    (m_vertices_ mdl)
+                                 (\ptr -> let pos = map (to4 . fix3 . vd_pos_) (m_vertices_ mdl)
+                                              nor = map (fix3 . vd_normal_)    (m_vertices_ mdl)
                                               tcd = map vd_texcoords_         (m_vertices_ mdl)
                                           in  do withArrayLen pos (\l s -> copyArray ptr   s l)
                                                  let ptr'  = ptr `plusPtr` (len * 16)
@@ -49,8 +49,6 @@ newMesh mdl = do mapM_ findResource tex
                                         , textures_     = tex
                                         , bone_weight_  = map bw (m_vertices_ mdl) }
     where
-      fix (Vector3 x y z) = Vector3 x z (-y)
-      to4 (Vector3 x y z) = Vector4 x y z 1
       tex = flip map (m_textures_ mdl) (\t -> case t of
                                                 Data.WOW.M2Model.Texture f _ -> "MPQ:" ++ f
                                                 _ -> "Unknown")
@@ -68,10 +66,10 @@ skeletonAnim bones mesh = do
     (\err -> assert False (return mesh))
     where
       sumbw :: Vector4 Float -> (BoneWeight,BoneWeight,BoneWeight,BoneWeight) -> Vector4 Float
-      sumbw vec (w1,w2,w3,w4) = sumV $ map (\w-> let m = bones !! fromIntegral (fst w)
-                                                     e = fromIntegral (snd w) / 255.0
-                                                 in  e *^ (m `multVec4` vec)
-                                           ) $ [w1,w2,w3,w4]
+      sumbw vec (w1,w2,w3,w4) = fix4 $ sumV $ map (\w-> let m = bones !! fromIntegral (fst w)
+                                                            e = fromIntegral (snd w) / 255.0
+                                                        in  e *^ (m `multVec4` vec)
+                                                  ) $ [w1,-w3,w2,w4]
 
 drawSubMesh mesh idx = 
     let sm  = submeshes_ mesh !! idx
@@ -139,5 +137,10 @@ withMaterial mesh rp act =
 
 -- renderAll is for test purpose. It simplely renders every submesh
 renderAll :: Mesh -> World GLResource ()
-renderAll mesh = (\r -> withMaterial mesh r (drawSubMesh mesh (r_geoset_ r))) (renderpasses_ mesh !! 0)
-                 -- mapM_ (\r -> withMaterial mesh r (drawSubMesh mesh (r_geoset_ r))) (renderpasses_ mesh)
+renderAll mesh = -- (\r -> withMaterial mesh r (drawSubMesh mesh (r_geoset_ r))) (renderpasses_ mesh !! 0)
+                 mapM_ (\r -> withMaterial mesh r (drawSubMesh mesh (r_geoset_ r))) (renderpasses_ mesh)
+
+fix3 (Vector3 x y z)     = Vector3 x z (-y)
+fix4 (Vector4 x y z w)   = Vector4 x z (-y) w
+unfix4 (Vector4 x y z w) = Vector4 x (-z) y w
+to4 (Vector3 x y z)      = Vector4 x y z 1

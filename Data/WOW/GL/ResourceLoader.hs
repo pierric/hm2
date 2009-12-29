@@ -3,7 +3,7 @@ module Data.WOW.GL.ResourceLoader where
 import Control.Monad.Trans(lift)
 import Data.Char
 
-import {-# SOURCE #-}Data.WOW.World
+import Data.WOW.World
 import Data.WOW.FileSystem
 import Data.WOW.M2Model
 import Data.WOW.BLP
@@ -17,7 +17,9 @@ import qualified System.FilePath.Windows as W
 import System.FilePath
 
 glResourceLoader = [ ResourceLoader (flip checkExt ".m2")
-                                    (\fp -> lift (newModel fp) >>= newMesh    >>= return . GLMesh)
+                                    (\fp -> do x <- lift (newModel fp) 
+                                               y <- newMesh x
+                                               return $ GLModel x y)
 {--
                    , ResourceLoader ((== ".blp") . lower . extension)
                                     (\fp -> let f' = ("FILE:" ++) $ lower $ flip replaceExtension "png" $

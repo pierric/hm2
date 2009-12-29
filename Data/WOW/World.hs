@@ -9,8 +9,6 @@ import Control.Exception
 
 import Data.WOW.DBC
 import Data.WOW.WorldTemplate
-import Data.WOW.GL.ResourceLoader
-
 
 type ResourceId = String
 data ResourceLoader res  = ResourceLoader { _validate   :: ResourceId -> Bool
@@ -43,5 +41,3 @@ findResource id = do lib <- getM (resLibrary >>> collection)
 -- World
 $(db [("CreatureSkinDB"  ,"DBFilesClient\\CreatureDisplayInfo.dbc")
      ,("CreatureModelDB" ,"DBFilesClient\\CreatureModelData.dbc"  )])
-
-beginning = WorldState{ _resLibrary = (ResourceLibrary glResourceLoader M.empty) }
