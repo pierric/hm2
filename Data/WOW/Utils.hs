@@ -63,3 +63,11 @@ instance AdditiveGroup (Vector4 Float) where
 instance VectorSpace (Vector4 Float) where
     type Scalar (Vector4 Float) = Float
     s *^ vec = quad_f (s *^ quad_t vec)
+
+--fix3 (Vector3 x y z)     = Vector3 x z (-y)
+--fix4 (Vector4 x y z w)   = Vector4 x z (-y) w
+--unfix4 (Vector4 x y z w) = Vector4 x (-z) y w
+to4 (Vector3 x y z)      = Vector4 x y z 1
+fix3 = id
+fix4 = id
+unfix4 = id

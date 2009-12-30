@@ -7,6 +7,7 @@ import Control.Exception
 import qualified Data.ByteString.Lazy as BS
 import Control.Monad(ap)
 import qualified Data.VectorSpace as V
+import Debug.Trace
 
 import Data.WOW.Utils
 import Data.WOW.Quaternion
@@ -40,6 +41,7 @@ newAnimated = newAnimated' undefined
 at :: KeyStore a => Animated a
                  -> Int                          -- index
                  -> Int                          -- time
+                 -> KeyType a                    -- default value
                  -> KeyType a
 at = at' undefined
 
@@ -72,16 +74,23 @@ newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global 
       every3 (x:y:z:r) = x:every3 r
       every3 _ = []
 
-at' :: KeyStore a => a -> Animated a -> Int -> Int -> KeyType a
-at' unused ani idx time =
-    assert (idx >=0 && idx < length (a_data_ ani) && idx < length (a_times_ ani)) $
-    if (length dt > 1)
-    then let ps    = filter (\(s,e) -> fst s <= tt && tt < fst e) $ zip dt (tail dt)
-             (s,e) = assert (length ps > 0) (head ps)
-             r     = fromIntegral (time - fst s) / fromIntegral (fst e - fst s)
-         in  interpolate ani (snd s) (snd e) r
-    else assert (not (null dt)) (snd $ head dt)
-    
+at' :: KeyStore a => a -> Animated a -> Int -> Int -> KeyType a -> KeyType a
+at' unused ani idx time default_
+    | idx >= length (a_data_ ani) || idx >= length (a_times_ ani)
+        = default_
+    | otherwise
+        = -- assert (idx >=0 && idx < length (a_data_ ani) && idx < length (a_times_ ani)) $
+          assert (idx >= 0) $
+          if (length dt > 1)
+          then let ps    = filter (\(s,e) -> fst s <= tt && tt < fst e) $ zip dt (tail dt)
+                   (s,e) = if null ps 
+                           then (dt!!0,dt!!1)  -- not found in the sequence, take the first one
+                           else head ps 
+                   r     = fromIntegral (time - fst s) / fromIntegral (fst e - fst s)
+               in  interpolate ani (snd s) (snd e) r
+          else if not (null dt)
+               then snd $ head dt
+               else default_
     where 
       tt = case a_global_ ani of 
              Nothing -> time
@@ -96,22 +105,26 @@ class KeyStore a where
     type KeyType a :: *
     getKey :: a -> Get (KeyType a)
     lerp   :: a -> KeyType a -> KeyType a -> Float -> KeyType a
+    zeroK  :: a -> KeyType a
 
 instance KeyStore PackedFloat where
     type KeyType PackedFloat = Float
     getKey _ = do t <- getUShort
                   return (fromIntegral t / 32767.0)
     lerp   _ = V.lerp
+    zeroK  _ = 0
 
 instance KeyStore Float where
     type KeyType Float = Float
     getKey _ = getFloat
     lerp   _ = V.lerp
+    zeroK  _ = 0
     
 instance KeyStore (Vector3 Float) where
     type KeyType (Vector3 Float) = (Vector3 Float)
     getKey _ = get
     lerp   _ = V.lerp
+    zeroK  _ = (Vector3 0 0 0)
 
 instance KeyStore PackedQuaternion where
     type KeyType PackedQuaternion = Quaternion
@@ -122,6 +135,7 @@ instance KeyStore PackedQuaternion where
                   let conv a = fromIntegral (if x<0 then x+32768 else x-32767) / 32767.0
                   return $ Quaternion (conv x, conv y, conv z,conv w)
     lerp   _ = V.lerp
+    zeroK  _ = identityQ
 
 instance KeyStore Quaternion where
     type KeyType Quaternion = Quaternion
@@ -131,3 +145,4 @@ instance KeyStore Quaternion where
                   w <- getFloat
                   return $ Quaternion (x,y,z,w)
     lerp   _ = slerp
+    zeroK  _ = identityQ

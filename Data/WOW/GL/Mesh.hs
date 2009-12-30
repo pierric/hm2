@@ -11,6 +11,7 @@ import Control.Exception
 import Control.Monad(when)
 import Control.Monad.Trans(lift)
 import Data.VectorSpace((*^), sumV)
+import Debug.Trace
 
 import Data.WOW.World
 import Data.WOW.M2Model
@@ -18,6 +19,7 @@ import Data.WOW.ModelDef
 import Data.WOW.GL.Types
 import Data.WOW.GL.Resource
 import Data.WOW.Matrix
+import Data.WOW.Utils
 
 newMesh :: M2Model -> World GLResource Mesh
 newMesh mdl = do mapM_ findResource tex
@@ -55,21 +57,24 @@ newMesh mdl = do mapM_ findResource tex
       bw vert = case zip (map fromIntegral $ vd_bones_ vert) (map fromIntegral $ vd_weights_ vert) of
                   [x,y,z,w] -> (x,y,z,w)
 
-skeletonAnim :: [Matrix] -> Mesh -> IO Mesh
-skeletonAnim bones mesh = do
-  GL.withMappedBuffer GL.ArrayBuffer GL.ReadWrite 
-    (\ptr -> do let num = fst $ vertices_ mesh
-                vert <- peekArray num (castPtr ptr :: Ptr (Vector4 Float))
-                withArrayLen (map (uncurry sumbw) $ zip vert (bone_weight_ mesh))
-                             (\l s -> assert (l == num) (copyArray ptr s l))
-                return mesh)
-    (\err -> assert False (return mesh))
+skeletonAnim :: [Matrix] -> Mesh -> World res Mesh
+skeletonAnim bones mesh = 
+    lift $ do GL.withMappedBuffer GL.ArrayBuffer GL.ReadWrite 
+                    (\ptr -> do let num = fst $ vertices_ mesh
+                                vert <- peekArray num (castPtr ptr :: Ptr (Vector4 Float))
+                                withArrayLen (map (uncurry sumbw) $ zip vert (bone_weight_ mesh))
+                                             (\l s -> assert (l == num) (copyArray ptr s l))
+                                return mesh)
+                    (\err -> assert False (return mesh))
     where
       sumbw :: Vector4 Float -> (BoneWeight,BoneWeight,BoneWeight,BoneWeight) -> Vector4 Float
-      sumbw vec (w1,w2,w3,w4) = fix4 $ sumV $ map (\w-> let m = bones !! fromIntegral (fst w)
-                                                            e = fromIntegral (snd w) / 255.0
-                                                        in  e *^ (m `multVec4` vec)
-                                                  ) $ [w1,-w3,w2,w4]
+      sumbw (Vector4 a b c d) (w1,w2,w3,w4)
+          = fix4 $ sumV $ map (\w-> let m = if fromIntegral (fst w) < length bones
+                                            then bones !! fromIntegral (fst w)
+                                            else trace (show w ++ ";" ++ show (length bones)) $ undefined
+                                        e = fromIntegral (snd w) / 255.0
+                                    in  e *^ (m `multVec4` (Vector4 a (-c) b d))
+                              ) $ [w1,w2,w3,w4]
 
 drawSubMesh mesh idx = 
     let sm  = submeshes_ mesh !! idx
@@ -137,10 +142,5 @@ withMaterial mesh rp act =
 
 -- renderAll is for test purpose. It simplely renders every submesh
 renderAll :: Mesh -> World GLResource ()
-renderAll mesh = -- (\r -> withMaterial mesh r (drawSubMesh mesh (r_geoset_ r))) (renderpasses_ mesh !! 0)
+renderAll mesh = -- (\r -> withMaterial mesh r (drawSubMesh mesh (r_geoset_ r))) (renderpasses_ mesh !! 1)
                  mapM_ (\r -> withMaterial mesh r (drawSubMesh mesh (r_geoset_ r))) (renderpasses_ mesh)
-
-fix3 (Vector3 x y z)     = Vector3 x z (-y)
-fix4 (Vector4 x y z w)   = Vector4 x z (-y) w
-unfix4 (Vector4 x y z w) = Vector4 x (-z) y w
-to4 (Vector3 x y z)      = Vector4 x y z 1

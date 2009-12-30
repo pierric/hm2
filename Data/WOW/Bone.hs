@@ -37,15 +37,14 @@ transform view anim time bones = map snd $ update view anim time [(-1, identity4
               npm = map ( fst &&& (snd . fst . snd)) $ filter (snd . snd) $ zip [1..] lst
               upd = \(b,m) -> case lookup (bone_parent_ b) pm of
                                 Just pmat -> let p = bone_pivot_ b
-                                                 t = at (bone_tran_ b) anim time
-                                                 r = at (bone_rota_ b) anim time
-                                                 s = at (bone_scal_ b) anim time
-                                             in  ((b, translation p
-                                                        `mult` translation t 
-                                                        `mult` rotate r
-                                                        `mult` scale s
-                                                        `mult` translation (negateV p)
-                                                        `mult` pmat)
+                                                 t = at (bone_tran_ b) anim time (Vector3 0 0 0)
+                                                 r = at (bone_rota_ b) anim time identityQ
+                                                 s = at (bone_scal_ b) anim time (Vector3 1 1 1)
+                                             in  ((b, pmat `mult` translation p
+                                                           `mult` translation t 
+                                                           `mult` rotate r
+                                                           `mult` scale s
+                                                           `mult` translation (negateV p) )
                                                  ,True)
                                 Nothing   -> ((b,m), False)
           in  update view anim time npm nbn (null npm)

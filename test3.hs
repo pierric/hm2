@@ -1,6 +1,6 @@
 module Main where
 
-import Graphics.Rendering.OpenGL.GL
+import Graphics.Rendering.OpenGL.GL as GL -- hiding (scale,rotate)
 import Graphics.Rendering.OpenGL.Raw
 import Graphics.Rendering.GLU.Raw
 import qualified Graphics.UI.GLUT as GLUT
@@ -10,12 +10,16 @@ import Graphics.UI.Gtk.OpenGL
 import Control.Monad.State
 import qualified Data.Map as M
 import Text.Printf
+import Control.Arrow((***))
 
 import Data.WOW.World
 import Data.WOW.M2Model
+import Data.WOW.Matrix
+import Data.WOW.Bone
 import Data.WOW.GL.Resource
 import Data.WOW.GL.ResourceLoader
 import Data.WOW.GL.Mesh
+import Data.WOW.Utils
 
 canvas_width, canvas_height :: Num a => a
 canvas_width  = 350
@@ -26,6 +30,7 @@ main = do
   initGL
 
   world  <- newIORef (WorldState{ _resLibrary = (ResourceLibrary glResourceLoader M.empty) })
+  mass   <- newIORef (-1,0)
 
   config <- glConfigNew [GLModeRGBA, GLModeAlpha, GLModeDepth, GLModeDouble]
   canvas <- glDrawingAreaNew config
@@ -83,7 +88,12 @@ main = do
                                         , adjustmentPageIncrement := (fromIntegral len / 100)
                                         , adjustmentPageSize := 1 ] 
                           )
+                     writeIORef mass (idx,0)
                  )
+  
+  onValueChanged range (do v <- Graphics.UI.Gtk.get range adjustmentValue
+                           modifyIORef mass (id *** const (ceiling v))
+                           widgetQueueDraw canvas)
 
   onRealize canvas (withGLDrawingArea canvas $ \_ -> do
                       putStrLn "on realize"
@@ -94,7 +104,7 @@ main = do
   onExpose canvas  (\_ -> do
                       withGLDrawingArea canvas (\w ->  do
                                                   putStrLn "on expose"
-                                                  myDisplay world
+                                                  myDisplay world mass
                                                   glDrawableSwapBuffers w
                                                )
                       return True
@@ -134,22 +144,47 @@ myLoadModelInfomation world (cmb,list) label_id label_length label_speed range =
                                  when (not $ null $ m_animations_ mdl)
                                       (comboBoxSetActive cmb 0)
 
-myDisplay world = do
+myDisplay world mass = do
+  (anim,time) <- readIORef mass
   clear [ColorBuffer, DepthBuffer]
   matrixMode $= Modelview 0
   loadIdentity
-  gluLookAt 0.0 0.0 5.0
-            0.0 2.0 0.0
+  gluLookAt 0.0 0.0 2.5
             0.0 1.0 0.0
-  withWorld world (do Just (GLModel _ m) <- findResource mm
-                      renderAll m )
+            0.0 1.0 0.0
+  GL.rotate (90 :: GLfloat) (Vector3 (-1) 0 0)
+  view <- (GLUT.get $ matrix $ Just $ Modelview 0 :: IO (GLmatrix GLfloat)) >>= getMatrixComponents RowMajor
+  withWorld world (do Just (GLModel mdl msh) <- findResource mm
+                      case () of 
+                        _
+--                          | True      -> renderAll msh
+                          | anim < 0  -> renderAll msh
+                          | otherwise -> let bones  = m_bones_ mdl
+                                             matrix = transform (fromList view) anim time bones
+                                             pivots = zipWith multVec4 matrix (map (to4 . bone_pivot_) bones)
+                                         in  do lift (do putStrLn $ "anim:" ++ show anim ++ 
+                                                                    " time:" ++ show time
+                                                         pointSize $= 3
+                                                         pointSmooth $= Enabled
+                                                         renderPrimitive Points
+                                                           (mapM_ (\(Vector4 a b c 1) -> 
+                                                                   let f2gf = realToFrac :: Float -> GLfloat
+                                                                       a'   = f2gf a
+                                                                       b'   = f2gf b
+                                                                       c'   = f2gf c
+                                                                   in  color  (Color3 1 0 (0 :: GLfloat)) >>
+                                                                       vertex (Vertex3 a' b' c')
+                                                                  ) pivots))
+                                                -- skeletonAnim matrix msh >>= renderAll
+                  )
 
 ma = "MPQ:World\\Expansion02\\Doodads\\Generic\\TUSKARR\\Tables\\TS_Long_Table_01.m2"
 mb = "MPQ:world\\goober\\g_xmastree.m2"
 mc = "MPQ:Character\\BloodElf\\Male\\BloodElfMale.m2"
 md = "MPQ:creature\\chicken\\chicken.m2"
+me = "MPQ:Creature\\Cat\\Cat.m2"
 
-mm = md
+mm = me
 
 withWorld :: IORef (WorldState res) -> World res a -> IO a
 withWorld w0 action = do a     <- readIORef w0

@@ -7,7 +7,7 @@ import Data.Array
 
 import Data.WOW.Matrix
 
-newtype Quaternion = Quaternion (Float,Float,Float,Float) deriving (InnerSpace,AdditiveGroup)
+newtype Quaternion = Quaternion (Float,Float,Float,Float) deriving (Show,InnerSpace,AdditiveGroup)
 
 instance VectorSpace Quaternion where
     type Scalar Quaternion = Float
@@ -35,6 +35,7 @@ rotate (Quaternion (i,j,k,r))
                                   , ij+rk      , r2-i2+j2-k2 , jk-ri       , 0 
                                   , ki-rj      , jk+ri       , r2-i2-j2+k2 , 0
                                   , 0          , 0           , 0           , 1 ]
+identityQ = Quaternion (0,0,0,1)
 
 {--
 type Vec = (Float,Float,Float)

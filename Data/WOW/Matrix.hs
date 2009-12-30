@@ -33,3 +33,5 @@ translation (Vector3 x y z) = identity4 // [((0,3),x),((1,3),y),((2,3),z)]
 scale :: Vector3 Float -> Matrix
 scale (Vector3 x y z) = identity4 // [((0,0),x),((1,1),y),((2,2),z)]
 
+fromList :: RealFloat a => [a] -> Matrix
+fromList arr = assert (length arr == 16) $ listArray ((0,0),(3,3)) (map realToFrac arr)
