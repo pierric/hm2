@@ -164,14 +164,11 @@ anim fname archive gseq ads bds | x=="2M." || x=="2m." = do
                                     , anim_move_speed_ = an_moveSpeed_ def
                                     , anim_loop_   = an_loopType_ def > 0
                                     , anim_flags_  = an_flags_ def} ) ads
+  -- part of animations has a separate .anim file, which provides animated data
   files <- mapM (\a -> findFile $ (printf "%s%04d-%02d.anim" (reverse n) (anim_Id_ a) (anim_subId_ a))) anims
-  assert (null files || length files == length anims) (return ())
-  let animSpec = case sequence files of
-                   Nothing -> []
-                   Just x  -> x
-      bones = map (\def -> let t = newAnimated (bn_tran_ def) gseq archive animSpec
-                               r = newAnimated (bn_rota_ def) gseq archive animSpec
-                               s = newAnimated (bn_scal_ def) gseq archive animSpec
+  let bones = map (\def -> let t = newAnimated (bn_tran_ def) gseq archive files
+                               r = newAnimated (bn_rota_ def) gseq archive files
+                               s = newAnimated (bn_scal_ def) gseq archive files
                            in Bone t r s (bn_pivot_ def) (bn_parent_ def) (bn_billboarded_ def)) bds
   return (anims, bones)
     

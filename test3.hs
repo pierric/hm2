@@ -159,22 +159,22 @@ myDisplay world mass = do
                         _
 --                          | True      -> renderAll msh
                           | anim < 0  -> renderAll msh
-                          | otherwise -> let bones  = m_bones_ mdl
-                                             matrix = transform (fromList view) anim time bones
-                                             pivots = zipWith multVec4 matrix (map (to4 . bone_pivot_) bones)
-                                         in  do lift (do putStrLn $ "anim:" ++ show anim ++ 
-                                                                    " time:" ++ show time
-                                                         pointSize $= 3
-                                                         pointSmooth $= Enabled
-                                                         renderPrimitive Points
-                                                           (mapM_ (\(Vector4 a b c 1) -> 
-                                                                   let f2gf = realToFrac :: Float -> GLfloat
-                                                                       a'   = f2gf a
-                                                                       b'   = f2gf b
-                                                                       c'   = f2gf c
-                                                                   in  color  (Color3 1 0 (0 :: GLfloat)) >>
-                                                                       vertex (Vertex3 a' b' c')
-                                                                  ) pivots))
+                          | otherwise
+                              -> let bones  = m_bones_ mdl
+                                     matrix = transform (fromList view) anim time bones
+                                     pivots = zipWith multVec4 matrix (map (to4 . bone_pivot_) bones)
+                                 in  do lift (do putStrLn $ "anim:" ++ show anim ++ 
+                                                              " time:" ++ show time
+                                                 renderPrimitive Lines
+                                                    (mapM_ (\(idx,(Vector4 a b c 1))-> 
+                                                                let par = bone_parent_ (bones !! idx)
+                                                                in  when (par /= -1)
+                                                                         (let gf = realToFrac :: Float -> GLfloat
+                                                                              Vector4 e f g 1 = pivots !! par
+                                                                          in  color  (Color3 1 0 (0 :: GLfloat)) >>
+                                                                              vertex (Vertex3 (gf a) (gf b) (gf c)) >>
+                                                                              vertex (Vertex3 (gf e) (gf f) (gf g)))
+                                                           ) $ zip [0..] pivots))
                                                 -- skeletonAnim matrix msh >>= renderAll
                   )
 
