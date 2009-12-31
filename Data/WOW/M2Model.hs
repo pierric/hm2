@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module Data.WOW.M2Model where
 
 import Data.Bits((.&.))
@@ -15,22 +16,22 @@ import Data.WOW.FileSystem
 import Data.WOW.Utils
 import Data.WOW.ModelDef
 
-data M2Model = M2Model{ m_name_ :: String
-                      , m_global_sequence_ :: [Int]
-                      , m_vertices_      :: [Vertex] -- vertices
-                      , m_indices_       :: [Int]    -- triagnles by index
-                      , m_textures_      :: [Texture]
-                      , m_geoset_        :: [Geoset]
-                      , m_renderpass_    :: [RenderPass]
-                      , m_colors_        :: [(Animated (Vector3 Float), Animated PackedFloat)]
-                      , m_transparency_  :: [Animated PackedFloat]
-                      , m_trans_lookup_  :: [Int]
-                      , m_attachments_   :: [Attachment]
-                      , m_attach_lookup_ :: [Int]
-                      , m_bones_         :: [Bone]
-                      , m_keybone_lookup_:: [Int]
-                      , m_animations_    :: [Animation]
-                      , m_anim_lookup_   :: [Int]
+data M2Model = M2Model{ m_name_            :: !String
+                      , m_global_sequence_ :: ![Int]
+                      , m_vertices_        :: ![Vertex] -- vertices
+                      , m_indices_         :: ![Int]    -- triagnles by index
+                      , m_textures_        :: ![Texture]
+                      , m_geoset_          :: ![Geoset]
+                      , m_renderpass_      :: ![RenderPass]
+                      , m_colors_          :: ![(Animated (Vector3 Float), Animated PackedFloat)]
+                      , m_transparency_    :: ![Animated PackedFloat]
+                      , m_trans_lookup_    :: ![Int]
+                      , m_attachments_     :: ![Attachment]
+                      , m_attach_lookup_   :: ![Int]
+                      , m_bones_           :: ![Bone]
+                      , m_keybone_lookup_  :: ![Int]
+                      , m_animations_      :: ![Animation]
+                      , m_anim_lookup_     :: ![Int]
                       }
 
 type Vertex = VertexDef
@@ -69,37 +70,37 @@ newModel fpath = do
   -- read a few definitions
   let bunchOf cnt offset g = getBunchOf cnt g (BS.drop (fromIntegral offset) archive)
       -- global sequence
-      gseq = bunchOf (nGlobalSequences_ def)    (ofsGlobalSequences_ def) getUInt
+      !gseq = bunchOf (nGlobalSequences_ def)    (ofsGlobalSequences_ def) getUInt
       -- vertex definition
-      vert = bunchOf (nVertices_ def)           (ofsVertices_ def)        (get :: Get VertexDef)
+      !vert = bunchOf (nVertices_ def)           (ofsVertices_ def)        (get :: Get VertexDef)
       -- texture definition
-      txdf = bunchOf (nTextures_ def)           (ofsTextures_ def)        (get :: Get TextureDef)
+      !txdf = bunchOf (nTextures_ def)           (ofsTextures_ def)        (get :: Get TextureDef)
       -- attachment definition
-      atdf = bunchOf (nAttachments_ def)        (ofsAttachments_ def)     (get :: Get AttachmentDef)
+      !atdf = bunchOf (nAttachments_ def)        (ofsAttachments_ def)     (get :: Get AttachmentDef)
       -- attachment lookups
-      atlk = bunchOf (nAttachLookup_ def)       (ofsAttachLookup_ def)    getUShort
+      !atlk = bunchOf (nAttachLookup_ def)       (ofsAttachLookup_ def)    getUShort
       -- color definitions
-      cldf = bunchOf (nColors_ def)             (ofsColors_ def)          (get :: Get ColorDef)
+      !cldf = bunchOf (nColors_ def)             (ofsColors_ def)          (get :: Get ColorDef)
       -- transparency definitions
-      trdf = bunchOf (nTransparency_ def)       (ofsTransparency_ def)    (get :: Get TransDef)
+      !trdf = bunchOf (nTransparency_ def)       (ofsTransparency_ def)    (get :: Get TransDef)
       -- transparency lookups
-      trlk = bunchOf (nTransparencyLookup_ def) (ofsTransparencyLookup_ def) getUShort
+      !trlk = bunchOf (nTransparencyLookup_ def) (ofsTransparencyLookup_ def) getUShort
       -- render flags
-      rflg = bunchOf (nTexFlags_ def)           (ofsTexFlags_ def)        (get :: Get RenderFlags)
+      !rflg = bunchOf (nTexFlags_ def)           (ofsTexFlags_ def)        (get :: Get RenderFlags)
       -- texture lookups
-      txlk = bunchOf (nTexLookup_ def)          (ofsTexLookup_ def)       getUShort
+      !txlk = bunchOf (nTexLookup_ def)          (ofsTexLookup_ def)       getUShort
       -- texture animation lookups
-      talk = bunchOf (nTexAnimLookup_ def)      (ofsTexAnimLookup_ def)   getUShort
+      !talk = bunchOf (nTexAnimLookup_ def)      (ofsTexAnimLookup_ def)   getUShort
       -- texture unit lookups
-      tulk = bunchOf (nTexUnitLookup_ def)      (ofsTexUnitLookup_ def)   getUShort
+      !tulk = bunchOf (nTexUnitLookup_ def)      (ofsTexUnitLookup_ def)   getUShort
       -- bone definitions
-      bndf = bunchOf (nBones_ def)              (ofsBones_ def)           (get :: Get BoneDef)
+      !bndf = bunchOf (nBones_ def)              (ofsBones_ def)           (get :: Get BoneDef)
       -- animation definitions
-      andf = bunchOf (nAnimations_ def)         (ofsAnimations_ def)      (get :: Get AnimationDef)
+      !andf = bunchOf (nAnimations_ def)         (ofsAnimations_ def)      (get :: Get AnimationDef)
       -- key bone lookups
-      kblk = bunchOf (nKeyBoneLookup_ def)      (ofsKeyBoneLookup_ def)   getUShort
+      !kblk = bunchOf (nKeyBoneLookup_ def)      (ofsKeyBoneLookup_ def)   getUShort
       -- animation lookups 
-      anlk = bunchOf (nAnimationLookup_ def)    (ofsAnimationLookup_ def) getUShort
+      !anlk = bunchOf (nAnimationLookup_ def)    (ofsAnimationLookup_ def) getUShort
   
   -- textures
   let textures = assert (nTextures_ def < 32) $ 
@@ -146,30 +147,32 @@ newModel fpath = do
 lod :: FilePath -> IO ([Int],[GeosetDef],[TexUnitDef])
 lod fname = do 
   let (s,n) = splitAt 3 $ reverse fname
-  let lname = assert (s=="2M." || s=="2m.") (reverse $ "niks.00" ++ n)
+      lname = assert (s=="2M." || s=="2m.") (reverse $ "niks.00" ++ n)
   Just archive <- findFile lname
-  let view = decode archive :: ViewDef
   let bunchOf cnt offset g = getBunchOf cnt g (BS.drop (fromIntegral offset) archive)
-  let idlk = bunchOf (mv_nIndex_ view) (mv_ofsIndex_ view) getUShort
-  let tris = bunchOf (mv_nTris_ view)  (mv_ofsTris_ view)  getUShort
-  let gsdf = bunchOf (mv_nSub_ view)   (mv_ofsSub_ view)   (get :: Get GeosetDef)
-  let txdf = bunchOf (mv_nTex_ view)   (mv_ofsTex_ view)   (get :: Get TexUnitDef)
+      !view = decode archive :: ViewDef
+      !idlk = bunchOf (mv_nIndex_ view) (mv_ofsIndex_ view) getUShort
+      !tris = bunchOf (mv_nTris_ view)  (mv_ofsTris_ view)  getUShort
+      !gsdf = bunchOf (mv_nSub_ view)   (mv_ofsSub_ view)   (get :: Get GeosetDef)
+      !txdf = bunchOf (mv_nTex_ view)   (mv_ofsTex_ view)   (get :: Get TexUnitDef)
   return $ (map (idlk!!) tris, gsdf, txdf)
 
 anim :: FilePath -> BS.ByteString -> [Int] -> [AnimationDef] -> [BoneDef] -> IO ([Animation], [Bone])
 anim fname archive gseq ads bds | x=="2M." || x=="2m." = do
-  let anims = map (\def -> Animation{ anim_Id_     = an_animId_ def
-                                    , anim_subId_  = an_subAnimId_ def
-                                    , anim_length_ = an_length_ def
-                                    , anim_move_speed_ = an_moveSpeed_ def
-                                    , anim_loop_   = an_loopType_ def > 0
-                                    , anim_flags_  = an_flags_ def} ) ads
+  let !anims = map (\def -> Animation{ anim_Id_     = an_animId_ def
+                                     , anim_subId_  = an_subAnimId_ def
+                                     , anim_length_ = an_length_ def
+                                     , anim_move_speed_ = an_moveSpeed_ def
+                                     , anim_loop_   = an_loopType_ def > 0
+                                     , anim_flags_  = an_flags_ def}
+                   ) ads
   -- part of animations has a separate .anim file, which provides animated data
   files <- mapM (\a -> findFile $ (printf "%s%04d-%02d.anim" (reverse n) (anim_Id_ a) (anim_subId_ a))) anims
-  let bones = map (\def -> let t = newAnimated (bn_tran_ def) gseq archive files
-                               r = newAnimated (bn_rota_ def) gseq archive files
-                               s = newAnimated (bn_scal_ def) gseq archive files
-                           in Bone t r s (bn_pivot_ def) (bn_parent_ def) (bn_billboarded_ def)) bds
+  let !bones = map (\def -> let !t = newAnimated (bn_tran_ def) gseq archive files
+                                !r = newAnimated (bn_rota_ def) gseq archive files
+                                !s = newAnimated (bn_scal_ def) gseq archive files
+                            in Bone t r s (bn_pivot_ def) (bn_parent_ def) (bn_billboarded_ def)
+                   ) bds
   return (anims, bones)
     
       where (x,n) = splitAt 3 $ reverse fname
