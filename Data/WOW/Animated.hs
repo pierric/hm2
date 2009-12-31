@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, EmptyDataDecls, FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies, EmptyDataDecls, FlexibleInstances, FlexibleContexts, BangPatterns #-}
 module Data.WOW.Animated where
 
 import Data.Tensor
@@ -48,16 +48,17 @@ at = at' undefined
 newAnimated' :: KeyStore a => a -> AnimationBlock -> [Int] -> BS.ByteString -> [Maybe BS.ByteString] -> Animated a
 newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global mpq anim =
   let -- get (number of timestamps,offset) paris, from offset of timeblock
-      ht    = bunchOf ntime otime getHeader
+      !ht    = bunchOf ntime otime getHeader
       -- get (number of keys, offset) paris, from offset of keyblock
-      hk    = bunchOf nkey  okey  getHeader
+      !hk    = bunchOf nkey  okey  getHeader
       -- get data for each of (number,offset) pairs
-      times = map (\(i,(nentry,oentry)) -> bunchOf' i nentry oentry getUShort) $ zip [0..] ht
+      !times = map (\(i,(nentry,oentry)) -> bunchOf' i nentry oentry getUInt) $ zip [0..] ht
       -- get data for each of (number,offset) paris
-      keys  = map (\(i,(nentry,oentry)) -> bunchOf' i nentry oentry (getKey unused)) $ zip [0..] hk
+      !keys  = map (\(i,(nentry,oentry)) -> bunchOf' i nentry oentry (getKey unused)) $ zip [0..] hk
       -- global sequence
-      gs    = if seq == -1 then Nothing else assert (0 <= seq && seq < length global) (Just $ global!!seq)
-  in  traceShow [ntime, length anim] $ assert (ntime == nkey && (ntime == 0 || null anim || length anim == ntime)) $ 
+      !gs    = if seq == -1 then Nothing else assert (0 <= seq && seq < length global) (Just $ global!!seq)
+  in  -- not every bone have data of every animation
+      traceShow [ntime, length anim] $ assert (ntime == nkey) $ 
       case () of 
         _ | typ == 0 || typ == 1 -> 
               AnimatedLinear  gs times keys
@@ -67,10 +68,10 @@ newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global 
     where
       bunchOf  s o g = getBunchOf s g (BS.drop (fromIntegral o) mpq)
       bunchOf' i s o g = case anim !! i of
-                           Nothing -> bunchOf s o g
+                           Nothing -> getBunchOf s g (BS.drop (fromIntegral o) mpq)
                            Just x  -> getBunchOf s g (BS.drop (fromIntegral o) x)
       getHeader :: Get (Int,Int)
-      getHeader = return (,) `ap` getUShort `ap` getUShort
+      getHeader = return (,) `ap` getUInt `ap` getUInt
       every3 (x:y:z:r) = x:every3 r
       every3 _ = []
 
@@ -87,10 +88,11 @@ at' unused ani idx time default_
                            then (dt!!0,dt!!1)  -- not found in the sequence, take the first one
                            else head ps 
                    r     = fromIntegral (time - fst s) / fromIntegral (fst e - fst s)
-               in  interpolate ani (snd s) (snd e) r
+                   show' (a,b) = "("++show a++","++ showK unused b++")"
+               in  {--trace (show' s ++show' e++"~"++show r) $ --} interpolate ani (snd s) (snd e) r
           else if not (null dt)
-               then snd $ head dt
-               else default_
+               then {--trace "first" $ --} snd $ head dt
+               else {--trace "default" $ --} default_
     where 
       tt = case a_global_ ani of 
              Nothing -> time
@@ -105,37 +107,37 @@ class KeyStore a where
     type KeyType a :: *
     getKey :: a -> Get (KeyType a)
     lerp   :: a -> KeyType a -> KeyType a -> Float -> KeyType a
-    zeroK  :: a -> KeyType a
+    showK  :: a -> KeyType a -> String
 
 instance KeyStore PackedFloat where
     type KeyType PackedFloat = Float
     getKey _ = do t <- getUShort
                   return (fromIntegral t / 32767.0)
     lerp   _ = V.lerp
-    zeroK  _ = 0
+    showK  _ = show
 
 instance KeyStore Float where
     type KeyType Float = Float
     getKey _ = getFloat
     lerp   _ = V.lerp
-    zeroK  _ = 0
+    showK  _ = show
     
 instance KeyStore (Vector3 Float) where
     type KeyType (Vector3 Float) = (Vector3 Float)
     getKey _ = get
     lerp   _ = V.lerp
-    zeroK  _ = (Vector3 0 0 0)
+    showK  _ = show
 
 instance KeyStore PackedQuaternion where
     type KeyType PackedQuaternion = Quaternion
-    getKey _ = do x <- getUShort
-                  y <- getUShort
-                  z <- getUShort
-                  w <- getUShort
-                  let conv a = fromIntegral (if x<0 then x+32768 else x-32767) / 32767.0
+    getKey _ = do x <- getUShort :: Get Int
+                  y <- getUShort :: Get Int
+                  z <- getUShort :: Get Int
+                  w <- getUShort :: Get Int
+                  let conv a = fromIntegral (if a<0 then a+32768 else a-32767) / 32767.0
                   return $ Quaternion (conv x, conv y, conv z,conv w)
     lerp   _ = V.lerp
-    zeroK  _ = identityQ
+    showK  _ = show
 
 instance KeyStore Quaternion where
     type KeyType Quaternion = Quaternion
@@ -145,4 +147,4 @@ instance KeyStore Quaternion where
                   w <- getFloat
                   return $ Quaternion (x,y,z,w)
     lerp   _ = slerp
-    zeroK  _ = identityQ
+    showK  _ = show
