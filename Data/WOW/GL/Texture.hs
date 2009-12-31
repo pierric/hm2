@@ -73,7 +73,7 @@ newTextureFromBLP typ raw = do
           setupLayerP pal (w,h) ab raw buf =
             forM_ (zip3 [0..] (halve (w,h)) raw) (\(l,(w',h'),r) -> do
               let s = w'*h'
-              forM_ (zip3 [1..s] (BS.unpack r) (alpha ab (BS.drop s r))) (\(o,i,a) ->
+              forM_ (zip3 [0..] (BS.unpack r) (alpha ab (BS.drop s r))) (\(o,i,a) ->
                 poke (buf `plusPtr` o) (fix (pal ! fromIntegral i) a))
               GL.texImage2D Nothing GL.NoProxy
                             l GL.RGBA8 (GL.TextureSize2D (fromIntegral w') (fromIntegral h')) 0 
