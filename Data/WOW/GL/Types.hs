@@ -2,7 +2,7 @@ module Data.WOW.GL.Types where
 
 import Data.Word
 import qualified Graphics.Rendering.OpenGL.GL as GL
-
+import Data.Tensor
 
 import Data.WOW.M2Model(RenderPass)
 import Data.WOW.BLP(CTYPE(..))
@@ -17,6 +17,8 @@ data SubMesh = SubMesh{ sm_vstart_
 type BoneWeight = (Word8, Word8)
 
 data Mesh = Mesh{ vertices_     :: (Int,GL.BufferObject)
+                , orig_vert_    :: [Vector3 Float]
+                , orig_norm_    :: [Vector3 Float]
                 , indices_      :: [Word16]
                 , renderpasses_ :: [RenderPass]
                 , submeshes_    :: [SubMesh]

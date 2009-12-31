@@ -44,8 +44,10 @@ newMesh mdl = do mapM_ findResource tex
                            let sm = map (\gs -> SubMesh (mg_vstart_ gs) (mg_vcount_ gs)
                                                         (mg_istart_ gs) (mg_icount_ gs)
                                         ) (m_geoset_ mdl)
-                           return $ Mesh{ vertices_ = (len,vbo)
-                                        , indices_  = map fromIntegral (m_indices_ mdl)
+                           return $ Mesh{ vertices_     = (len,vbo)
+                                        , orig_vert_    = map vd_pos_ (m_vertices_ mdl)
+                                        , orig_norm_    = map vd_normal_ (m_vertices_ mdl)
+                                        , indices_      = map fromIntegral (m_indices_ mdl)
                                         , renderpasses_ = m_renderpass_ mdl
                                         , submeshes_    = sm
                                         , textures_     = tex
@@ -59,22 +61,19 @@ newMesh mdl = do mapM_ findResource tex
 
 skeletonAnim :: [Matrix] -> Mesh -> World res Mesh
 skeletonAnim bones mesh = 
-    lift $ do GL.withMappedBuffer GL.ArrayBuffer GL.ReadWrite 
-                    (\ptr -> do let num = fst $ vertices_ mesh
-                                vert <- peekArray num (castPtr ptr :: Ptr (Vector4 Float))
-                                withArrayLen (map (uncurry sumbw) $ zip vert (bone_weight_ mesh))
+    lift $ do let (num,vbo) = vertices_ mesh
+              GL.bindBuffer GL.ArrayBuffer GL.$= Just vbo
+              GL.withMappedBuffer GL.ArrayBuffer GL.WriteOnly
+                    (\ptr -> do withArrayLen (map (to4 . uncurry sumbw) $ zip (orig_vert_ mesh) (bone_weight_ mesh))
                                              (\l s -> assert (l == num) (copyArray ptr s l))
                                 return mesh)
                     (\err -> assert False (return mesh))
     where
-      sumbw :: Vector4 Float -> (BoneWeight,BoneWeight,BoneWeight,BoneWeight) -> Vector4 Float
-      sumbw (Vector4 a b c d) (w1,w2,w3,w4)
-          = fix4 $ sumV $ map (\w-> let m = if fromIntegral (fst w) < length bones
-                                            then bones !! fromIntegral (fst w)
-                                            else trace (show w ++ ";" ++ show (length bones)) $ undefined
-                                        e = fromIntegral (snd w) / 255.0
-                                    in  e *^ (m `multVec4` (Vector4 a (-c) b d))
-                              ) $ [w1,w2,w3,w4]
+      sumbw :: Vector3 Float -> (BoneWeight,BoneWeight,BoneWeight,BoneWeight) -> Vector3 Float
+      sumbw v@(Vector3 a b c) (w1,w2,w3,w4)
+          = sumV $ map (\(b,w)-> let m = assert (0<=b && fromIntegral b < length bones) (bones !! (fromIntegral b))
+                                 in  (fromIntegral w / 255.0) *^ (m `multVec3` v)
+                       ) $ [w1,w2,w3,w4]
 
 drawSubMesh mesh idx = 
     let sm  = submeshes_ mesh !! idx
