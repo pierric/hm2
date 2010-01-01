@@ -16,6 +16,7 @@ import Data.VectorSpace
 
 import Data.WOW.World
 import Data.WOW.M2Model
+import Data.WOW.Skin
 import Data.WOW.Matrix
 import Data.WOW.Bone
 import Data.WOW.GL.Resource
@@ -33,7 +34,9 @@ main = do
   initGUI
   initGL
 
-  world  <- newIORef (WorldState{ _resLibrary = (ResourceLibrary glResourceLoader M.empty) })
+  world  <- newIORef (WorldState{ _resLibrary = (ResourceLibrary glResourceLoader M.empty)
+                                , _db_creaturemodel = Nothing 
+                                , _db_creatureskin  = Nothing })
   mass   <- newIORef (-1,0)
 
   config <- glConfigNew [GLModeRGBA, GLModeAlpha, GLModeDepth, GLModeDouble]
@@ -124,6 +127,7 @@ myInit _ = do
   clearColor $= Color4 0.4 0.4 0.4 1
   clearDepth $= 1
   depthFunc  $= Just Less
+  blend      $= Disabled
   shadeModel $= Smooth
   glEnable gl_TEXTURE_2D
   lighting   $= Enabled
@@ -141,6 +145,8 @@ myInit _ = do
 
 myLoadModelInfomation world (cmb,list) label_id label_length label_speed range = 
   withWorld world $ do Just (GLModel mdl msh) <- findResource mm
+                       --cnt <- creatureSkinCount mdl
+                       --lift $ putStrLn (show cnt)
                        lift $ do -- fill in the model of combobox
                                  listStoreClear list
                                  mapM_ (listStoreAppend list) (zip [1::Int .. ] $ m_animations_ mdl)
@@ -153,22 +159,21 @@ myDisplay world mass = do
   clear [ColorBuffer, DepthBuffer]
   matrixMode $= Modelview 0
   loadIdentity
-  gluLookAt 0.0 0.0 2.1
-            0.0 0.5 0.0
+  gluLookAt 0.0 8.0 20.0
+            0.0 5.5 0.0
             0.0 1.0 0.0
   GL.rotate (90 :: GLfloat) (Vector3 (-1) 0 0)
   view <- (GLUT.get $ matrix $ Just $ Modelview 0 :: IO (GLmatrix GLfloat)) >>= getMatrixComponents RowMajor
-  putStrLn $ show (anim,time)
   withWorld world (do Just (GLModel mdl msh) <- findResource mm
                       case () of 
                         _
 --                          | True      -> renderAll msh
                                          -- lift $ drawBone (m_bones_ mdl)
-                          | anim < 0  -> renderAll msh
+                          | anim < 0  -> renderAll [] msh
                           | otherwise
                               -> -- lift $ drawBone' (fromList view) anim time (m_bones_ mdl)
                                  let matrix = transform (fromList view) anim time (m_bones_ mdl)
-                                 in  skeletonAnim matrix msh >>= renderAll
+                                 in  skeletonAnim matrix msh >>= renderAll []
                   )
 
 drawBone' view anim time bones
@@ -207,8 +212,10 @@ mb = "MPQ:world\\goober\\g_xmastree.m2"
 mc = "MPQ:Character\\BloodElf\\Male\\BloodElfMale.m2"
 md = "MPQ:creature\\chicken\\chicken.m2"
 me = "MPQ:Creature\\Cat\\Cat.m2"
+mf = "MPQ:Creature\\Chimera\\Chimera.m2"
+mg = "MPQ:Creature\\Dragon\\Onyxiamount.m2"
 
-mm = me
+mm = mg
 
 withWorld :: IORef (WorldState res) -> World res a -> IO a
 withWorld w0 action = do a     <- readIORef w0
