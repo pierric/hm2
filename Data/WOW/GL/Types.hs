@@ -4,7 +4,7 @@ import Data.Word
 import qualified Graphics.Rendering.OpenGL.GL as GL
 import Data.Tensor
 
-import Data.WOW.M2Model(RenderPass)
+import qualified Data.WOW.M2Model as M2
 import Data.WOW.BLP(CTYPE(..))
 import Data.WOW.World(ResourceId)
 
@@ -20,9 +20,9 @@ data Mesh = Mesh{ vertices_     :: (Int,GL.BufferObject)
                 , orig_vert_    :: [Vector3 Float]
                 , orig_norm_    :: [Vector3 Float]
                 , indices_      :: [Word16]
-                , renderpasses_ :: [RenderPass]
+                , renderpasses_ :: [M2.RenderPass]
                 , submeshes_    :: [SubMesh]
-                , textures_     :: [ResourceId]
+                , textures_     :: [M2.Texture]
                 -- each vertex can be affected by 4 bones
                 -- an array of (bone_index, weight) for each vertex
                 , bone_weight_  :: [(BoneWeight,BoneWeight,BoneWeight,BoneWeight)]
@@ -30,7 +30,6 @@ data Mesh = Mesh{ vertices_     :: (Int,GL.BufferObject)
 
 data Texture = Texture{ -- tx_name_   :: String
                         tx_type_   :: TextureType
-                      , tx_size_   :: (Int,Int)
                       , tx_object_ :: GL.TextureObject 
                       }
 

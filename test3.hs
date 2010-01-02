@@ -13,10 +13,12 @@ import Text.Printf
 import Control.Arrow((***))
 import Data.Array
 import Data.VectorSpace
+import Data.Maybe(catMaybes, fromJust)
+import System.FilePath.Windows
 
 import Data.WOW.World
 import Data.WOW.M2Model
-import Data.WOW.Skin
+import Data.WOW.Creature
 import Data.WOW.Matrix
 import Data.WOW.Bone
 import Data.WOW.GL.Resource
@@ -38,6 +40,7 @@ main = do
                                 , _db_creaturemodel = Nothing 
                                 , _db_creatureskin  = Nothing })
   mass   <- newIORef (-1,0)
+  crea   <- newIORef undefined
 
   config <- glConfigNew [GLModeRGBA, GLModeAlpha, GLModeDepth, GLModeDouble]
   canvas <- glDrawingAreaNew config
@@ -63,6 +66,8 @@ main = do
   cellLayoutPackStart cmb cmb_renderer True
   cellLayoutSetAttributes cmb cmb_renderer list (\(idx,ani) -> [ cellText := printf "Anim:%2d" idx ])
 
+  skinSel <- comboBoxNewText 
+
   label_id     <- labelNew (Just "ID:")
   label_length <- labelNew (Just "Length:")
   label_speed  <- labelNew (Just "Speed:")
@@ -73,6 +78,7 @@ main = do
   set hbox   [ containerChild := canvas
              , containerChild := vbox ]
   set vbox   [ containerChild := cmb
+             , containerChild := skinSel
              , containerChild := label_id
              , containerChild := label_length
              , containerChild := label_speed
@@ -99,31 +105,37 @@ main = do
                      writeIORef mass (idx,0)
                  )
   
+  on skinSel changed (do idx <- comboBoxGetActive skinSel
+                         c   <- readIORef crea
+                         c'  <- withWorld world (creatureChangeSkin c idx)
+                         writeIORef crea c'
+                         widgetQueueDraw canvas
+                     )
+
   onValueChanged range (do v <- Graphics.UI.Gtk.get range adjustmentValue
                            modifyIORef mass (id *** const (ceiling v))
                            widgetQueueDraw canvas)
 
   onRealize canvas (withGLDrawingArea canvas $ \_ -> do
                       putStrLn "on realize"
-                      myInit world
-                      myLoadModelInfomation world (cmb,list) label_id label_length label_speed range
+                      myInit world crea (cmb, list) skinSel
                    )
 
   onExpose canvas  (\_ -> do
                       withGLDrawingArea canvas (\w ->  do
-                                                  myDisplay world mass
+                                                  myDisplay world mass crea
                                                   glDrawableSwapBuffers w
                                                )
                       return True
                    )
   
-  -- timeoutAddFull (widgetQueueDraw canvas >> return True) priorityDefaultIdle 20
+  --timeoutAddFull (widgetQueueDraw canvas >> return True) priorityDefaultIdle 20
   
   widgetShowAll window
   mainGUI
 
   
-myInit _ = do
+myInit world creaR (animSel,animM) skinSel = do
   clearColor $= Color4 0.4 0.4 0.4 1
   clearDepth $= 1
   depthFunc  $= Just Less
@@ -141,39 +153,49 @@ myInit _ = do
   gluPerspective 45 (canvas_width / canvas_height) 1 1000
   matrixMode $= Modelview 0
   loadIdentity
-  return ()
+  
+  withWorld world $ do crea <- newCreature mm 0
+                       lift $ writeIORef creaR crea
+                       sl   <- creatureSkinList (_crea_name crea)
+                       Just (GLModel mdl msh) <- findResource (_crea_resource crea)
 
-myLoadModelInfomation world (cmb,list) label_id label_length label_speed range = 
-  withWorld world $ do Just (GLModel mdl msh) <- findResource mm
-                       --cnt <- creatureSkinCount mdl
-                       --lift $ putStrLn (show cnt)
+                       -- print all textures
+                       lift $ do mapM_ (\t -> case t of
+                                                Data.WOW.M2Model.Texture f _ -> putStrLn f
+                                                _ -> return ()
+                                       ) (m_textures_ mdl)
+                                 mapM_ (putStrLn . drop 4) (catMaybes $ concat sl)
+
                        lift $ do -- fill in the model of combobox
-                                 listStoreClear list
-                                 mapM_ (listStoreAppend list) (zip [1::Int .. ] $ m_animations_ mdl)
+                                 listStoreClear animM
+                                 mapM_ (listStoreAppend animM) (zip [1::Int .. ] $ m_animations_ mdl)
                                  -- select the first item if any
                                  when (not $ null $ m_animations_ mdl)
-                                      (comboBoxSetActive cmb 0)
+                                      (comboBoxSetActive animSel 0)
+                                 mapM_ (comboBoxAppendText skinSel . takeFileName . head . catMaybes) sl
+                                 when (not $ null $ sl)
+                                      (comboBoxSetActive skinSel 0)
+  putStrLn "Initialization Done.."
 
-myDisplay world mass = do
+myDisplay world mass creaR = do
   (anim,time) <- readIORef mass
   clear [ColorBuffer, DepthBuffer]
   matrixMode $= Modelview 0
   loadIdentity
-  gluLookAt 0.0 8.0 20.0
-            0.0 5.5 0.0
+  gluLookAt 0.0 0.0 15
+            0.0 5.0 0.0
             0.0 1.0 0.0
   GL.rotate (90 :: GLfloat) (Vector3 (-1) 0 0)
   view <- (GLUT.get $ matrix $ Just $ Modelview 0 :: IO (GLmatrix GLfloat)) >>= getMatrixComponents RowMajor
-  withWorld world (do Just (GLModel mdl msh) <- findResource mm
+  withWorld world (do crea <- lift $ readIORef creaR 
+                      Just (GLModel mdl msh) <- findResource (_crea_resource crea)
                       case () of 
                         _
---                          | True      -> renderAll msh
-                                         -- lift $ drawBone (m_bones_ mdl)
                           | anim < 0  -> renderAll [] msh
                           | otherwise
                               -> -- lift $ drawBone' (fromList view) anim time (m_bones_ mdl)
                                  let matrix = transform (fromList view) anim time (m_bones_ mdl)
-                                 in  skeletonAnim matrix msh >>= renderAll []
+                                 in  skeletonAnim matrix msh >>= renderAll (_crea_skin crea)
                   )
 
 drawBone' view anim time bones
@@ -207,15 +229,16 @@ drawBone bones
          color (Color3 (gf 1) 0 0)
          renderPrimitive Points (vertex (Vertex3 (gf x0) (gf y0) (gf z0)))
 
-ma = "MPQ:World\\Expansion02\\Doodads\\Generic\\TUSKARR\\Tables\\TS_Long_Table_01.m2"
-mb = "MPQ:world\\goober\\g_xmastree.m2"
-mc = "MPQ:Character\\BloodElf\\Male\\BloodElfMale.m2"
-md = "MPQ:creature\\chicken\\chicken.m2"
-me = "MPQ:Creature\\Cat\\Cat.m2"
-mf = "MPQ:Creature\\Chimera\\Chimera.m2"
-mg = "MPQ:Creature\\Dragon\\Onyxiamount.m2"
+ma = "World\\Expansion02\\Doodads\\Generic\\TUSKARR\\Tables\\TS_Long_Table_01"
+mb = "world\\goober\\g_xmastree"
+mc = "Character\\BloodElf\\Male\\BloodElfMale"
+md = "Creature\\Chicken\\Chicken"
+me = "Creature\\Cat\\Cat"
+mf = "Creature\\Chimera\\Chimera"
+mg = "Creature\\Dragon\\Onyxiamount"
+mh = "Creature\\BloodElfGuard\\BloodElfMale_Guard"
 
-mm = mg
+mm = mh
 
 withWorld :: IORef (WorldState res) -> World res a -> IO a
 withWorld w0 action = do a     <- readIORef w0

@@ -36,8 +36,8 @@ data M2Model = M2Model{ m_name_            :: !String
 
 type Vertex = VertexDef
 
-data Texture = Texture    { t_filename_ :: String, t_flags_ :: Int }
-             | CharTexture{ t_type_     :: Int   , t_flags_ :: Int }
+data Texture = Texture           { t_filename_ :: String, t_flags_ :: Int }
+             | ReplacableTexture { t_type_     :: Int   , t_flags_ :: Int }
 
 type Geoset = GeosetDef
 
@@ -49,7 +49,7 @@ data RenderPass = RenderPass{ r_geoset_ :: Int
 	                    , r_texanim_, r_color_, r_opacity_, r_blendmode_ :: Int
 	                    , r_order_ :: Int
 	                    , r_swrap_, r_twrap_ :: Bool
-                            }
+                            } deriving Show
 
 type Attachment = AttachmentDef
 
@@ -107,7 +107,7 @@ newModel fpath = do
                  map (\def -> case td_type_ def of
                                 0 -> Texture (bunchOf (td_nameLen_ def - 1) (td_nameOfs_ def) (get :: Get Char))
                                              (td_flags_ def)
-                                _ -> CharTexture (td_type_ def) (td_flags_ def)
+                                _ -> ReplacableTexture (td_type_ def) (td_flags_ def)
                      ) txdf
 
   -- color table
@@ -240,7 +240,7 @@ instance Ord RenderPass where
 
 instance Show Texture where
     show (Texture f _) = "Texture: " ++ f
-    show (CharTexture t _) = "Texture: " ++ show t
+    show (ReplacableTexture t _) = "Texture: " ++ show t
 
 instance Show Animation where
     show anim = printf "Animation: %d-%d. Length:%d. Speed:%.2f. Loop:%d. flags:%d"

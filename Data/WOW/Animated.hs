@@ -7,7 +7,6 @@ import Control.Exception
 import qualified Data.ByteString.Lazy as BS
 import Control.Monad(ap)
 import qualified Data.VectorSpace as V
-import Debug.Trace
 
 import Data.WOW.Utils
 import Data.WOW.Quaternion
@@ -58,7 +57,7 @@ newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global 
       -- global sequence
       !gs    = if seq == -1 then Nothing else assert (0 <= seq && seq < length global) (Just $ global!!seq)
   in  -- not every bone have data of every animation
-      traceShow [ntime, length anim] $ assert (ntime == nkey) $ 
+      assert (ntime == nkey) $ 
       case () of 
         _ | typ == 0 || typ == 1 -> 
               AnimatedLinear  gs times keys

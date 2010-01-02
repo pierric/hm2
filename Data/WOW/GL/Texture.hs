@@ -39,7 +39,7 @@ newTexture fpath = do
                       GLU.build2DMipmaps GL.Texture2D GL.RGBA' (fromIntegral w) (fromIntegral h)
                                          (GL.PixelData GL.RGBA GL.UnsignedByte ptr)
                       GL.textureFilter GL.Texture2D GL.$= ((GL.Linear',Nothing),GL.Linear')
-                      return (Texture TEX_TYPE_2D (w,h) texture) )
+                      return (Texture TEX_TYPE_2D texture) )
 
 
 newTextureFromBLP :: TextureType -> BLP -> IO Texture
@@ -53,7 +53,7 @@ newTextureFromBLP typ raw = do
   GL.textureWrapMode GL.Texture2D GL.R GL.$= (GL.Repeated, GL.Clamp)
   GL.textureWrapMode GL.Texture2D GL.S GL.$= (GL.Repeated, GL.ClampToEdge)
   GL.textureWrapMode GL.Texture2D GL.T GL.$= (GL.Repeated, GL.ClampToEdge)  
-  return (Texture typ (blp_size_ raw) texture)
+  return (Texture typ texture)
 
     where fix :: Word32 -> Word32 -> Word32 
           fix v a = shiftR (v .&. 0x00FF0000) 16 .|. (v .&. 0x0000FF00) .|. shiftL (v .&. 0x000000FF) 16 .|. shiftL a 24
@@ -87,7 +87,7 @@ newTextureFromBLP typ raw = do
               then let t' = case ctype of DXT1' -> DXT1
                                           DXT3' -> DXT3
                                           DXT5' -> DXT5
-                   in  withDecompressed t' r w' h' (\pp -> 
+                   in  withDecompressed t' (BS.unpack r) w' h' (\pp -> 
                          GL.texImage2D Nothing GL.NoProxy l GL.RGBA'
                                        (GL.TextureSize2D (fromIntegral w') (fromIntegral h')) 0 
                                        (GL.PixelData GL.RGBA GL.UnsignedByte pp))

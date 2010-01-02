@@ -12,7 +12,7 @@ declDBC name field = vcat ([ hsep $ map text ["newtype", name, "=", name, "DbcDe
                            , hsep $ map text ["instance DBC", name, "where"]
                            , nest 4 $ hsep $ map text $ ["data Field", name, "="] ++ intersperse "|" (map fst field)
                            , nest 4 $ hsep $ map text $ ["new a = newDBC a >>= return .", name]
-                           , nest 4 $ hcat $ map text $ ["records (", name, " a) = map (\\i -> Record a (dbc_rsize a * i)) [1..dbc_rnumber a]"]
+                           , nest 4 $ hcat $ map text $ ["records (", name, " a) = map (\\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]"]
                            , nest 4 $ text "offset a = 4 * case a of" ]
                            ++
                            map (\(n,v) -> nest 21 $ text n <+> text "->" <+> int v) field)
@@ -90,7 +90,9 @@ d = [ declDBC "CharHairGeosetsDB" [("CharHairGeosetID", 0)
     , declDBC "CreatureSkinDB" [("CreatureSkinID", 0)
 	                       ,("CreatureSkinModelID", 1)
 	                       ,("CreatureSkinNPCID", 3)
-	                       ,("CreatureSkin", 6) ]
+	                       ,("CreatureSkin0", 6) 
+                               ,("CreatureSkin1", 7) 
+                               ,("CreatureSkin2", 8) ]
     , declDBC "CreatureTypeDB" [("CreatureTypeID", 0)
 	                       ,("CreatureTypeName", 1)]
     , declDBC "NPCDB" [("NPCID", 0)

@@ -10,6 +10,7 @@ import Data.Int
 import Data.Tensor
 import Control.Monad(ap)
 import Data.VectorSpace
+import Data.Char
 
 import Data.WOW.Quaternion
 
@@ -71,3 +72,7 @@ to4 (Vector3 x y z)      = Vector4 x y z 1
 fix3 = id
 fix4 = id
 unfix4 = id
+
+-- compare two string case-insensibly
+cmpString :: String -> String -> Bool
+cmpString s1 s2 = (map toLower s1) == (map toLower s2)

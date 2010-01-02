@@ -11,22 +11,22 @@ import Data.WOW.DBC
 import Data.WOW.WorldTemplate
 
 type ResourceId = String
-data ResourceLoader res  = ResourceLoader { _validate   :: ResourceId -> Bool
-                                          , _new        :: ResourceId -> World res res }
+data ResourceLoader r  = ResourceLoader { _validate   :: ResourceId -> Bool
+                                        , _new        :: ResourceId -> World r r }
 
-data ResourceLibrary res = ResourceLibrary{ _loader     :: [ResourceLoader res]
-                                          , _collection :: M.Map ResourceId res }
+data ResourceLibrary r = ResourceLibrary{ _loader     :: [ResourceLoader r]
+                                        , _collection :: M.Map ResourceId r }
 
-data WorldState res      = WorldState { _resLibrary :: ResourceLibrary res
-                                      , _db_creaturemodel :: Maybe CreatureModelDB 
-                                      , _db_creatureskin  :: Maybe CreatureSkinDB  
-                                      }
-type World res = StateT (WorldState res) IO
+data WorldState r      = WorldState { _resLibrary       :: ResourceLibrary r
+                                    , _db_creaturemodel :: Maybe CreatureModelDB 
+                                    , _db_creatureskin  :: Maybe CreatureSkinDB  
+                                    }
+type World r = StateT (WorldState r) IO
 
 $(mkLabels [''WorldState,''ResourceLibrary])
 
 -- Resource
-findResource :: ResourceId -> World a (Maybe a)
+findResource :: ResourceId -> World r (Maybe r)
 findResource id = do lib <- getM (resLibrary >>> collection)
                      case M.lookup id lib of
                        Just x  -> return (Just x)
@@ -37,7 +37,7 @@ findResource id = do lib <- getM (resLibrary >>> collection)
                                                    modM (resLibrary >>> collection) (M.insert id res)
                                                    return (Just res)
                                        []    -> return Nothing
-                                     
+
 -- World
-$(db [("CreatureSkinDB"  ,"DBFilesClient\\CreatureDisplayInfo.dbc")
-     ,("CreatureModelDB" ,"DBFilesClient\\CreatureModelData.dbc"  )])
+$(db [("CreatureSkinDB"  ,"MPQ:DBFilesClient\\CreatureDisplayInfo.dbc")
+     ,("CreatureModelDB" ,"MPQ:DBFilesClient\\CreatureModelData.dbc"  )])

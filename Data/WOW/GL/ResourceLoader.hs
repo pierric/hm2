@@ -28,6 +28,7 @@ glResourceLoader = [ ResourceLoader (flip checkExt ".m2")
                                                 lift $ newTexture f' >>= return . GLTexture) ]
 --}
                    , ResourceLoader (flip checkExt ".blp") 
-                                    (\fp -> lift $ newBLP fp >>= newTextureFromBLP TEX_TYPE_2D >>= return . GLTexture) ]
+                                    (\fp -> lift $ newBLP fp >>= newTextureFromBLP TEX_TYPE_2D >>= return . GLTexture) 
+                   ]
 
     where lower = map toLower
