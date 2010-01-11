@@ -1,6 +1,7 @@
-module Data.WOW.GL.ResourceLoader where
+module Data.WOW.GL.ResourceLoader(glResourceLoader) where
 
 import Control.Monad.Trans(lift)
+import Data.Record.Label
 import Data.Char
 
 import Data.WOW.World
@@ -10,25 +11,16 @@ import Data.WOW.BLP
 import Data.WOW.GL.Types
 import Data.WOW.GL.Mesh
 import Data.WOW.GL.Texture
-import Data.WOW.GL.Resource
 
-import Debug.Trace
-import qualified System.FilePath.Windows as W
-import System.FilePath
-
+glResourceLoader :: (FileSystem f) => [ResourceLoader f GLResource]
 glResourceLoader = [ ResourceLoader (flip checkExt ".m2")
-                                    (\fp -> do x <- lift (newModel fp) 
+                                    (\fp -> do fs <- getM filesystem
+                                               x <- lift $ openM2 fs fp
                                                y <- newMesh x
                                                return $ GLModel x y)
-{--
-                   , ResourceLoader ((== ".blp") . lower . extension)
-                                    (\fp -> let f' = ("FILE:" ++) $ lower $ flip replaceExtension "png" $
-                                                     joinPath $ ["..","tmp"] ++ W.splitDirectories (drop 4 fp)
-                                            in  trace ("load " ++ f' ++" instead of " ++ fp) $ 
-                                                lift $ newTexture f' >>= return . GLTexture) ]
---}
                    , ResourceLoader (flip checkExt ".blp") 
-                                    (\fp -> lift $ newBLP fp >>= newTextureFromBLP TEX_TYPE_2D >>= return . GLTexture) 
+                                    (\fp -> do fs <- getM filesystem 
+                                               Just ct <- lift $ findFile fs fp 
+                                               tx <- lift $ newTextureFromBLP TEX_TYPE_2D (openBLPfromByteString ct)
+                                               return $ GLTexture tx) 
                    ]
-
-    where lower = map toLower

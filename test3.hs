@@ -18,15 +18,16 @@ import System.FilePath.Windows
 
 import Data.WOW.World
 import Data.WOW.M2Model
-import Data.WOW.Creature
+import Data.WOW.Creature 
 import Data.WOW.Matrix
 import Data.WOW.Bone
-import Data.WOW.GL.Resource
-import Data.WOW.GL.ResourceLoader
-import Data.WOW.GL.Mesh
+import Data.WOW.FileSystem
 import Data.WOW.Utils
 import Data.WOW.Animated
 import Data.WOW.Quaternion
+import Data.WOW.GL.Types
+import Data.WOW.GL.ResourceLoader
+import Data.WOW.GL.Mesh
 
 canvas_width, canvas_height :: Num a => a
 canvas_width  = 700
@@ -36,7 +37,8 @@ main = do
   initGUI
   initGL
 
-  world  <- newIORef (WorldState{ _resLibrary = (ResourceLibrary glResourceLoader M.empty)
+  world  <- newIORef (WorldState{ _filesystem = MockMPQ ["..","tmp"]
+                                , _resLibrary = (ResourceLibrary glResourceLoader M.empty)
                                 , _db_creaturemodel = Nothing 
                                 , _db_creatureskin  = Nothing })
   mass   <- newIORef (-1,0)
@@ -237,19 +239,19 @@ me = "Creature\\Cat\\Cat"
 mf = "Creature\\Chimera\\Chimera"
 mg = "Creature\\Dragon\\Onyxiamount"
 mh = "Creature\\BloodElfGuard\\BloodElfMale_Guard"
+mm = mg
 
-mm = mh
-
-withWorld :: IORef (WorldState res) -> World res a -> IO a
+-- withWorld :: IORef (WorldState res) -> World res a -> IO a
 withWorld w0 action = do a     <- readIORef w0
                          (b,c) <- runStateT action a
                          writeIORef w0 c
                          return b
-
+{--
 printMatrix = do
   m <- newModel mm
   let t = transform identity4 0 1000 (m_bones_ m)
   writeFile "out" $ unlines $ map pm t
+--}
 
 p bone = bone_pivot_ bone
 t bone = at (bone_tran_ bone) 0 1000 (Vector3 0 0 0)
@@ -268,4 +270,4 @@ pm m = printf "[%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f
                (m!(2,0)) (m!(2,1)) (m!(2,2)) (m!(2,3))
                (m!(3,0)) (m!(3,1)) (m!(3,2)) (m!(3,3))
 
-g b1 = zip (a_times_ (bone_rota_ b1) !! 0 ) (a_data_  (bone_rota_ b1) !! 0) 
+-- g b1 = zip (a_times_ (bone_rota_ b1) !! 0 ) (a_data_  (bone_rota_ b1) !! 0) 

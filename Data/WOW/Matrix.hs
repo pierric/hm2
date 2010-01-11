@@ -1,4 +1,4 @@
-module Data.WOW.Matrix where
+module Data.WOW.Matrix(Matrix,mult, multVec3, identity4, translation, scale, fromList) where
 
 import Data.Array
 import Data.Tensor

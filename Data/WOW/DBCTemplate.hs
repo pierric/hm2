@@ -1,17 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Data.WOW.DBCTemplate where
 
---import Data.Word
---import qualified Data.ByteString.Lazy as BS
---import Data.Binary.Get
---import Language.Haskell.TH
 import Text.PrettyPrint.HughesPJ
 import Data.List
 
 declDBC name field = vcat ([ hsep $ map text ["newtype", name, "=", name, "DbcDesc"]
                            , hsep $ map text ["instance DBC", name, "where"]
                            , nest 4 $ hsep $ map text $ ["data Field", name, "="] ++ intersperse "|" (map fst field)
-                           , nest 4 $ hsep $ map text $ ["new a = newDBC a >>= return .", name]
+                           , nest 4 $ hsep $ map text $ ["open =", name, ". openDBCfromByteString"]
                            , nest 4 $ hcat $ map text $ ["records (", name, " a) = map (\\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]"]
                            , nest 4 $ text "offset a = 4 * case a of" ]
                            ++
@@ -117,22 +113,20 @@ d = [ declDBC "CharHairGeosetsDB" [("CharHairGeosetID", 0)
 	              ,("NFilename", 20) ]
     ]
 
-gen = do 
-  writeFile "DBC.hs" $ render $ vcat $ map text header ++ [text ""] ++ intersperse (text "") d
+gen = writeFile "DBC.hs" $ render $ vcat $ map text header ++ [text ""] ++ intersperse (text "") d
 
     where 
-      header = ["{-# LANGUAGE TypeFamilies,TemplateHaskell #-}"
-               ,"module DBC( fieldI, fieldS, new, records, offset"
-               ,"          , Field(..)"
-               ,"          , CreatureModelDB"
-               ,"          , CreatureSkinDB"
-               ,"          , ) where"
+      header = ["{-# LANGUAGE TypeFamilies #-}"
+               ,"module Data.WOW.DBC( fieldI, fieldS, open, records, offset"
+               ,"                   , Field(..)"
+               ,"                   , CreatureModelDB"
+               ,"                   , CreatureSkinDB"
+               ,"                   , ) where"
                ,""
                ,"import qualified Data.ByteString.Lazy as BS"
                ,"import Data.Binary.Get"
                ,"import Data.Word"
                ,""
-               ,"import {-#SOURCE#-}World"
                ,"import FileSystem"
                ,"import Utils"
                ," "
@@ -147,7 +141,7 @@ gen = do
                ," "
                ,"class DBC a where"
                ,"    data Field a"
-               ,"    new     :: ResourceId -> IO a"
+               ,"    open    :: BS.ByteString -> a"
                ,"    records :: a -> [Record a]"
                ,"    offset  :: Field a -> Word32"
                ,""
@@ -163,106 +157,13 @@ gen = do
                ,"                      , dbc_strings :: BS.ByteString"
                ,"                      }                      "
                ," "
-               ,"newDBC :: ResourceId -> IO DbcDesc"
-               ,"newDBC rid = do"
-               ,"  bs <- findFile rid"
-               ,"  let [nr,nf,sr,ss] = runGet (sequence $ take 4 $ repeat getUInt) bs"
-               ,"      dat = BS.take (sr*nr) $ BS.drop 16 bs"
-               ,"      str = BS.take ss $ BS.drop (16 + sr*nr) bs"
-               ,"  return $ DbcDesc (fromIntegral nr) (fromIntegral sr) dat str" ]
-
-                                
-{--
-data DbcDesc = DbcDesc{ dbc_rnumber :: !Word32
-                      , dbc_rsize   :: !Word32
-                      , dbc_data    :: BS.ByteString
-                      , dbc_strings :: BS.ByteString
-                      }
-
-data Record = Record{ rec_dbc    :: DbcDesc
-                    , rec_offset :: !Word32
-                    }
-
-newDBC :: ResourceId -> IO DbcDesc
-newDBC rid = do
-  bs <- findFile rid
-  let [nr,nf,sr,ss] = runGet (sequence $ take 4 $ repeat getUInt) bs
-      dat = BS.take (sr*nr) $ BS.drop 16 bs
-      str = BS.take ss $ BS.drop (16 + sr*nr) bs
-  return $ DbcDesc (fromIntegral nr) (fromIntegral sr) dat str
-
-getRecords :: DbcDesc -> [Record]
-getRecords dbc@(DbcDesc rn rs dat str) = map (\i -> Record dbc (rs*i)) [1..rn]
-
---getInt :: (DBC d, f ~ Field d) => d -> f -> Int
---getInt dbc field = 
-
-class DBC a where
-    data Field a
-    record :: a -> Field a -> Record
-    new    :: ResourceId -> IO a
-
-
-declDBC typName fields = do
-  [declNew] <- [d|new r = newDBC r >>= return . $(conE name) |]
-  declRec   <- let d = mkName "d"
-                   r = mkName "r"
-                   a = mkName "a"
-                   e = [|getRecords $(varE a) !! $(return (CaseE (VarE $ mkName "r") alt))|]
-               in  funD (mkName "record") 
-                        [clause [varP d, varP r] 
-                                (normalB (caseE (varE d)
-                                                [match (conP name [varP a]) (normalB e) []])) 
-                                []]
-  return [ NewtypeD [] name [] (NormalC name [(NotStrict,ConT ''DbcDesc)]) []
-         , InstanceD [] (AppT (ConT ''DBC) (ConT name)) [{--declField,--} declNew, declRec] ]
-    where name = mkName typName
-          alt  = map (\(n,v) -> Match (ConP (mkName n) []) (NormalB $ LitE $ IntegerL v) []) fields
-
---}
-
-{--
-data DbcDesc = DbcDesc
-data Record  = Record
-newDBC :: ResourceId -> IO DbcDesc
-newDBC _ = return DbcDesc
-getRecords :: DbcDesc -> [Record]
-getRecords _ = []
-
-data Field = F1 | F2 | F3
-
-class DBC a where
-    record :: a -> Field -> Record
-    new    :: ResourceId -> IO a
---}
-
-
-{--
-newtype ItemDB = ItemDB DbcDesc
-instance DBC ItemDB where
-    data Field ItemDB = ID | Itemclass | Subclass | ItemDisplayInfo | InventorySlot | Sheath
-    new r = 
-        newDBC r >>= return . ItemDB
-    record (ItemDB a) r = 
-        getRecords a !! (case r of
-                           ID        -> 0
-                           Itemclass -> 1
-                           Subclass  -> 2
-                           ItemDisplayInfo -> 5
-                           InventorySlot   -> 6
-                           Sheath          -> 7)
-
-newtype CharHairGeosetsDB = CharHairGeosetsDB DbcDesc
-instance DBC CharHairGeosetsDB where
-    data Filed CharHairGeosetsDB = CharHairGeosetID | Race | Gender | Section | Geoset
-    new r = 
-        newDBC r >>= return . CharHairGeosetID
-    record (CharHairGeosetID a) r = 
-        getRecords a !! (case r of
-                           CharHairGeosetID -> 0
-                           Race    -> 1
-                           Gender  -> 2
-                           Section -> 3
-                           Geoset  -> 4)
-
---}
+               ,"openDBC :: FilePath -> IO DbcDesc"
+               ,"openDBC rid = BS.readFile rid  >>= return . openDBCfromByteString"
+               ,""
+               ,"openDBCfromByteString :: BS.ByteString -> DbcDesc"
+               ,"openDBCfromByteString bs = "
+               ,"  let [hd,nr,nf,sr,ss] = runGet (sequence $ take 5 $ repeat getUInt) bs"
+               ,"      !dat = BS.take (sr*nr) $ BS.drop 20 bs"
+               ,"      !str = BS.take ss $ BS.drop (20 + sr*nr) bs"
+               ,"  in  assert (hd == 1128416343) $ DbcDesc (fromIntegral nr) (fromIntegral sr) dat str"
+               ]

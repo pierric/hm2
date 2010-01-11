@@ -1,5 +1,5 @@
-{-# LANGUAGE TypeFamilies,TemplateHaskell, BangPatterns #-}
-module Data.WOW.DBC( fieldI, fieldS, new, records, offset
+{-# LANGUAGE TypeFamilies #-}
+module Data.WOW.DBC( fieldI, fieldS, open, records, offset
                    , Field(..)
                    , CreatureModelDB
                    , CreatureSkinDB
@@ -9,9 +9,7 @@ import qualified Data.ByteString.Lazy as BS
 import Data.Binary.Get
 import Data.Word
 import Control.Exception
-import Debug.Trace
 
-import {-# SOURCE #-} Data.WOW.World
 import Data.WOW.FileSystem
 import Data.WOW.Utils
  
@@ -20,12 +18,13 @@ fieldI f (Record d o) = let o' = fromIntegral $ o + offset f
                         in  runGet getUInt $ BS.drop o' $ dbc_data d
 
 fieldS :: (DBC a, f ~ Field a) => f -> Record a -> String
-fieldS f r@(Record d o) = let s = fromIntegral $ fieldI f r
-                          in  runGet getString $ BS.drop s $ dbc_strings d
+fieldS f (Record d o) = let o' = fromIntegral $ o + offset f
+                            s  = runGet getUInt (BS.drop o' $ dbc_data d)
+                        in  runGet getString $ BS.drop s $ dbc_strings d
  
 class DBC a where
     data Field a
-    new     :: ResourceId -> IO a
+    open    :: BS.ByteString -> a
     records :: a -> [Record a]
     offset  :: Field a -> Word32
 
@@ -41,19 +40,21 @@ data DbcDesc = DbcDesc{ dbc_rnumber :: !Word32
                       , dbc_strings :: BS.ByteString
                       }                      
  
-newDBC :: FilePath -> IO DbcDesc
-newDBC rid = do
-  Just bs <- findFile rid
+openDBC :: FilePath -> IO DbcDesc
+openDBC rid = BS.readFile rid  >>= return . openDBCfromByteString
+
+openDBCfromByteString :: BS.ByteString -> DbcDesc
+openDBCfromByteString bs = 
   let [hd,nr,nf,sr,ss] = runGet (sequence $ take 5 $ repeat getUInt) bs
       !dat = BS.take (sr*nr) $ BS.drop 20 bs
       !str = BS.take ss $ BS.drop (20 + sr*nr) bs
-  assert (hd == 1128416343) $ return $ DbcDesc (fromIntegral nr) (fromIntegral sr) dat str
+  in  assert (hd == 1128416343) $ DbcDesc (fromIntegral nr) (fromIntegral sr) dat str
 
 newtype CharHairGeosetsDB = CharHairGeosetsDB DbcDesc
 instance DBC CharHairGeosetsDB where
     data Field CharHairGeosetsDB = CharHairGeosetID | HRace | HGender | HSection | HGeoset
-    new a = newDBC a >>= return . CharHairGeosetsDB
-    records (CharHairGeosetsDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = CharHairGeosetsDB . openDBCfromByteString
+    records (CharHairGeosetsDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      CharHairGeosetID -> 0
                      HRace -> 1
@@ -64,8 +65,8 @@ instance DBC CharHairGeosetsDB where
 newtype CharSectionsDB = CharSectionsDB DbcDesc
 instance DBC CharSectionsDB where
     data Field CharSectionsDB = CharSectonID | CRace | CGender | CType | CTex1 | CTex2 | CTex3 | CSection | CColor | CSkinType | CFaceType | CFacialHairType | CHairType | CUnderwearType
-    new a = newDBC a >>= return . CharSectionsDB
-    records (CharSectionsDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = CharSectionsDB . openDBCfromByteString
+    records (CharSectionsDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      CharSectonID -> 0
                      CRace -> 1
@@ -85,8 +86,8 @@ instance DBC CharSectionsDB where
 newtype CharRacesDB = CharRacesDB DbcDesc
 instance DBC CharRacesDB where
     data Field CharRacesDB = CharRaceID | RShortName | RName | RGeoType1
-    new a = newDBC a >>= return . CharRacesDB
-    records (CharRacesDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = CharRacesDB . openDBCfromByteString
+    records (CharRacesDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      CharRaceID -> 0
                      RShortName -> 6
@@ -96,8 +97,8 @@ instance DBC CharRacesDB where
 newtype CharFacialHairDB = CharFacialHairDB DbcDesc
 instance DBC CharFacialHairDB where
     data Field CharFacialHairDB = FRace | FGender | FStyle | FGeoset100 | FGeoset300 | FGeoset200
-    new a = newDBC a >>= return . CharFacialHairDB
-    records (CharFacialHairDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = CharFacialHairDB . openDBCfromByteString
+    records (CharFacialHairDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      FRace -> 0
                      FGender -> 1
@@ -109,8 +110,8 @@ instance DBC CharFacialHairDB where
 newtype CharClassesDB = CharClassesDB DbcDesc
 instance DBC CharClassesDB where
     data Field CharClassesDB = CharClassID | CName
-    new a = newDBC a >>= return . CharClassesDB
-    records (CharClassesDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = CharClassesDB . openDBCfromByteString
+    records (CharClassesDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      CharClassID -> 0
                      CName -> 4
@@ -118,8 +119,8 @@ instance DBC CharClassesDB where
 newtype ItemDisplayDB = ItemDisplayDB DbcDesc
 instance DBC ItemDisplayDB where
     data Field ItemDisplayDB = ItemDisplayID | IModel | IModel2 | ISkin | ISkin2 | IIcon | ITexture | IGloveGeosetFlags | IBracerGeosetFlags | IRobeGeosetFlags | IBootsGeosetFlags | IUnknown | IItemGroupSounds | IGeosetVisID1 | IGeosetVisID2 | ITexArmUpper | ITexArmLower | ITexHands | ITexChestUpper | ITexChestLower | ITexLegUpper | ITexLegLower | ITexFeet | IVisuals
-    new a = newDBC a >>= return . ItemDisplayDB
-    records (ItemDisplayDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = ItemDisplayDB . openDBCfromByteString
+    records (ItemDisplayDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      ItemDisplayID -> 0
                      IModel -> 1
@@ -149,8 +150,8 @@ instance DBC ItemDisplayDB where
 newtype ItemVisualDB = ItemVisualDB DbcDesc
 instance DBC ItemVisualDB where
     data Field ItemVisualDB = ItemVisualID | VEffect1
-    new a = newDBC a >>= return . ItemVisualDB
-    records (ItemVisualDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = ItemVisualDB . openDBCfromByteString
+    records (ItemVisualDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      ItemVisualID -> 0
                      VEffect1 -> 1
@@ -158,8 +159,8 @@ instance DBC ItemVisualDB where
 newtype ItemVisualEffectDB = ItemVisualEffectDB DbcDesc
 instance DBC ItemVisualEffectDB where
     data Field ItemVisualEffectDB = ItemVisualEffectID | VModel
-    new a = newDBC a >>= return . ItemVisualEffectDB
-    records (ItemVisualEffectDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = ItemVisualEffectDB . openDBCfromByteString
+    records (ItemVisualEffectDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      ItemVisualEffectID -> 0
                      VModel -> 1
@@ -167,8 +168,8 @@ instance DBC ItemVisualEffectDB where
 newtype ItemSetDB = ItemSetDB DbcDesc
 instance DBC ItemSetDB where
     data Field ItemSetDB = ItemSetID | IName | IItemIDBase
-    new a = newDBC a >>= return . ItemSetDB
-    records (ItemSetDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = ItemSetDB . openDBCfromByteString
+    records (ItemSetDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      ItemSetID -> 0
                      IName -> 1
@@ -177,8 +178,8 @@ instance DBC ItemSetDB where
 newtype StartOutfitDB = StartOutfitDB DbcDesc
 instance DBC StartOutfitDB where
     data Field StartOutfitDB = StartOutfitID | SRace | SClass | SGender | SItemIDBase
-    new a = newDBC a >>= return . StartOutfitDB
-    records (StartOutfitDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = StartOutfitDB . openDBCfromByteString
+    records (StartOutfitDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      StartOutfitID -> 0
                      SRace -> 4
@@ -189,8 +190,8 @@ instance DBC StartOutfitDB where
 newtype CreatureModelDB = CreatureModelDB DbcDesc
 instance DBC CreatureModelDB where
     data Field CreatureModelDB = CreatureModelID | CreatureModelType | CreatureModelFilename
-    new a = newDBC a >>= return . CreatureModelDB
-    records (CreatureModelDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = CreatureModelDB . openDBCfromByteString
+    records (CreatureModelDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      CreatureModelID -> 0
                      CreatureModelType -> 1
@@ -198,10 +199,9 @@ instance DBC CreatureModelDB where
 
 newtype CreatureSkinDB = CreatureSkinDB DbcDesc
 instance DBC CreatureSkinDB where
-    data Field CreatureSkinDB = CreatureSkinID | CreatureSkinModelID | CreatureSkinNPCID
-                              | CreatureSkin0 | CreatureSkin1 | CreatureSkin2
-    new a = newDBC a >>= return . CreatureSkinDB
-    records (CreatureSkinDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    data Field CreatureSkinDB = CreatureSkinID | CreatureSkinModelID | CreatureSkinNPCID | CreatureSkin0 | CreatureSkin1 | CreatureSkin2
+    open = CreatureSkinDB . openDBCfromByteString
+    records (CreatureSkinDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      CreatureSkinID -> 0
                      CreatureSkinModelID -> 1
@@ -213,8 +213,8 @@ instance DBC CreatureSkinDB where
 newtype CreatureTypeDB = CreatureTypeDB DbcDesc
 instance DBC CreatureTypeDB where
     data Field CreatureTypeDB = CreatureTypeID | CreatureTypeName
-    new a = newDBC a >>= return . CreatureTypeDB
-    records (CreatureTypeDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = CreatureTypeDB . openDBCfromByteString
+    records (CreatureTypeDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      CreatureTypeID -> 0
                      CreatureTypeName -> 1
@@ -222,8 +222,8 @@ instance DBC CreatureTypeDB where
 newtype NPCDB = NPCDB DbcDesc
 instance DBC NPCDB where
     data Field NPCDB = NPCID | NRaceID | NGender | NSkinColor | NFace | NHairStyle | NHairColor | NFacialHair | NHelmID | NShoulderID | NShirtID | NChestID | NBeltID | NPantsID | NBootsID | NBracersID | NGlovesID | NTabardID | NCapeID | NFilename
-    new a = newDBC a >>= return . NPCDB
-    records (NPCDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a - 1]
+    open = NPCDB . openDBCfromByteString
+    records (NPCDB a) = map (\i -> Record a (dbc_rsize a * i)) [0..dbc_rnumber a-1]
     offset a = 4 * case a of
                      NPCID -> 0
                      NRaceID -> 1

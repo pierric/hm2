@@ -1,5 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
-module Data.WOW.M2Model where
+module Data.WOW.M2Model( M2Model(..)
+                       , RenderPass(..)
+                       , Vertex
+                       , Texture(..)
+                       , Geoset
+                       , Attachment
+                       , Animation(..)
+                       , openM2) where
 
 import Data.Bits((.&.))
 import Data.Binary
@@ -16,8 +23,7 @@ import Data.WOW.FileSystem
 import Data.WOW.Utils
 import Data.WOW.ModelDef
 
-data M2Model = M2Model{ m_name_            :: !String
-                      , m_global_sequence_ :: ![Int]
+data M2Model = M2Model{ m_global_sequence_ :: ![Int]
                       , m_vertices_        :: ![Vertex] -- vertices
                       , m_indices_         :: ![Int]    -- triagnles by index
                       , m_textures_        :: ![Texture]
@@ -61,9 +67,9 @@ data Animation  = Animation{ anim_Id_
                            , anim_flags_ :: Int
                            }
 
-newModel :: FilePath -> IO M2Model
-newModel fpath = do 
-  Just archive <- findFile fpath
+openM2 :: FileSystem fs => fs -> String -> IO M2Model
+openM2 fs fpath = do
+  Just archive <- findFile fs fpath
   let def  = decode archive :: Header
   assert (nViews_ def > 0) (return ())
              
@@ -104,10 +110,9 @@ newModel fpath = do
   
   -- textures
   let textures = assert (nTextures_ def < 32) $ 
-                 map (\def -> case td_type_ def of
-                                0 -> Texture (bunchOf (td_nameLen_ def - 1) (td_nameOfs_ def) (get :: Get Char))
-                                             (td_flags_ def)
-                                _ -> ReplacableTexture (td_type_ def) (td_flags_ def)
+                 map (\d -> case td_type_ d of
+                                0 -> Texture (bunchOf (td_nameLen_ d - 1) (td_nameOfs_ d) (get :: Get Char)) (td_flags_ d)
+                                _ -> ReplacableTexture (td_type_ d) (td_flags_ d)
                      ) txdf
 
   -- color table
@@ -117,17 +122,16 @@ newModel fpath = do
   let trans  = map (\tra -> newAnimated tra gseq archive []) trdf
       
   -- view
-  (indices, geoset, texunit) <- lod fpath
+  (indices, geoset, texunit) <- lod fs fpath
   
   -- renderpasses
   let rps    = map (renderpass textures geoset rflg trlk txlk talk tulk) texunit
 
   -- bone
-  (animations, bones) <- anim fpath archive gseq andf bndf
+  (animations, bones) <- anim fs fpath archive gseq andf bndf
              
   -- create the model
-  return $ M2Model{ m_name_            = fpath
-                  , m_global_sequence_ = gseq
+  return $ M2Model{ m_global_sequence_ = gseq
                   , m_vertices_        = vert
                   , m_indices_         = indices
                   , m_textures_        = textures
@@ -144,11 +148,11 @@ newModel fpath = do
                   , m_anim_lookup_     = anlk }
 
 
-lod :: FilePath -> IO ([Int],[GeosetDef],[TexUnitDef])
-lod fname = do 
+lod :: FileSystem fs => fs -> FilePath -> IO ([Int],[GeosetDef],[TexUnitDef])
+lod fs fname = do 
   let (s,n) = splitAt 3 $ reverse fname
       lname = assert (s=="2M." || s=="2m.") (reverse $ "niks.00" ++ n)
-  Just archive <- findFile lname
+  Just archive <- findFile fs lname
   let bunchOf cnt offset g = getBunchOf cnt g (BS.drop (fromIntegral offset) archive)
       !view = decode archive :: ViewDef
       !idlk = bunchOf (mv_nIndex_ view) (mv_ofsIndex_ view) getUShort
@@ -157,8 +161,8 @@ lod fname = do
       !txdf = bunchOf (mv_nTex_ view)   (mv_ofsTex_ view)   (get :: Get TexUnitDef)
   return $ (map (idlk!!) tris, gsdf, txdf)
 
-anim :: FilePath -> BS.ByteString -> [Int] -> [AnimationDef] -> [BoneDef] -> IO ([Animation], [Bone])
-anim fname archive gseq ads bds | x=="2M." || x=="2m." = do
+anim :: FileSystem fs => fs -> FilePath -> BS.ByteString -> [Int] -> [AnimationDef] -> [BoneDef] -> IO ([Animation], [Bone])
+anim fs fname archive gseq ads bds | x=="2M." || x=="2m." = do
   let !anims = map (\def -> Animation{ anim_Id_     = an_animId_ def
                                      , anim_subId_  = an_subAnimId_ def
                                      , anim_length_ = an_length_ def
@@ -167,7 +171,7 @@ anim fname archive gseq ads bds | x=="2M." || x=="2m." = do
                                      , anim_flags_  = an_flags_ def}
                    ) ads
   -- part of animations has a separate .anim file, which provides animated data
-  files <- mapM (\a -> findFile $ (printf "%s%04d-%02d.anim" (reverse n) (anim_Id_ a) (anim_subId_ a))) anims
+  files <- mapM (\a -> findFile fs $ (printf "%s%04d-%02d.anim" (reverse n) (anim_Id_ a) (anim_subId_ a))) anims
   let !bones = map (\def -> let !t = newAnimated (bn_tran_ def) gseq archive files
                                 !r = newAnimated (bn_rota_ def) gseq archive files
                                 !s = newAnimated (bn_scal_ def) gseq archive files
@@ -243,10 +247,10 @@ instance Show Texture where
     show (ReplacableTexture t _) = "Texture: " ++ show t
 
 instance Show Animation where
-    show anim = printf "Animation: %d-%d. Length:%d. Speed:%.2f. Loop:%d. flags:%d"
-                       (anim_Id_ anim)
-                       (anim_subId_ anim)
-                       (anim_length_ anim)
-                       (anim_move_speed_ anim)
-                       (fromEnum $ anim_loop_ anim)
-                       (anim_flags_ anim)
+    show a = printf "Animation: %d-%d. Length:%d. Speed:%.2f. Loop:%d. flags:%d"
+                    (anim_Id_ a)
+                    (anim_subId_ a)
+                    (anim_length_ a)
+                    (anim_move_speed_ a)
+                    (fromEnum $ anim_loop_ a)
+                    (anim_flags_ a)

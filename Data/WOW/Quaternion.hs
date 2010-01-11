@@ -1,5 +1,5 @@
 {-# OPTIONS -XTypeFamilies -XGeneralizedNewtypeDeriving #-}
-module Data.WOW.Quaternion where
+module Data.WOW.Quaternion(Quaternion(..), slerp, rotate, identityQ) where
 
 import Data.Cross
 import Data.VectorSpace

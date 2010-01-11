@@ -8,6 +8,9 @@ import qualified Data.WOW.M2Model as M2
 import Data.WOW.BLP(CTYPE(..))
 import Data.WOW.World(ResourceId)
 
+data GLResource = GLModel M2.M2Model Mesh
+                | GLTexture Texture
+
 data SubMesh = SubMesh{ sm_vstart_ 
                       , sm_vcount_
                       , sm_istart_

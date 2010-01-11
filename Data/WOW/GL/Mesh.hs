@@ -19,13 +19,13 @@ import Debug.Trace
 import Data.WOW.World
 import Data.WOW.M2Model as M2
 import Data.WOW.ModelDef
-import Data.WOW.GL.Types
-import Data.WOW.GL.Resource
 import Data.WOW.Matrix
 import Data.WOW.Utils
+import Data.WOW.FileSystem
+import Data.WOW.GL.Types
 
 -- Build up a mesh object with OpenGL
-newMesh :: M2Model -> World GLResource Mesh
+newMesh :: FileSystem fs => M2Model -> World fs GLResource Mesh
 newMesh mdl = lift $ do -- main part of this routine is to generate and fill an OpenGL vertex buffer
                         [vbo] <- GL.genObjectNames 1
                         GL.bindBuffer GL.ArrayBuffer GL.$= Just vbo
@@ -67,7 +67,7 @@ newMesh mdl = lift $ do -- main part of this routine is to generate and fill an 
                   [x,y,z,w] -> (x,y,z,w)
 
 -- Apply the skeleton to the mesh, where the skeleton is simply a matrix for each bone.
-skeletonAnim :: [Matrix] -> Mesh -> World res Mesh
+skeletonAnim :: FileSystem fs => [Matrix] -> Mesh -> World fs res Mesh
 skeletonAnim bones mesh = 
     lift $ do -- number of vertices and the vertex buffer
               let (num,vbo) = vertices_ mesh
@@ -108,14 +108,9 @@ drawSubMesh mesh idx =
            GL.clientState GL.TextureCoordArray GL.$= GL.Disabled
 
 
-withMaterial :: [Maybe ResourceId] -> Mesh -> RenderPass -> IO () -> World GLResource ()
+withMaterial :: FileSystem fs => [Maybe ResourceId] -> Mesh -> RenderPass -> IO () -> World fs GLResource ()
 withMaterial rep_tex mesh rp act = 
-    do {--
-       tf <- runMaybeT $ do t <- MaybeT . return $ (join $ lookup (r_tex_ rp) $ zip [0..] rep_tex) `mplus` 
-                                                   (textures_ mesh !! r_tex_ rp)
-                            traceShow t $ MaybeT (findResource t)
-       --}
-       let tex = case textures_ mesh !! r_tex_ rp of         
+    do let tex = case textures_ mesh !! r_tex_ rp of         
                    M2.Texture filename _       -> Just ("MPQ:" ++ filename)
                    M2.ReplacableTexture typ _  -> join $ lookup typ (zip [0..] rep_tex)
        tf <- fmap (join . listToMaybe) $ mapM findResource $ maybeToList tex
@@ -160,6 +155,6 @@ withMaterial rep_tex mesh rp act =
                                (GL.textureWrapMode GL.Texture2D GL.T GL.$= (GL.Repeated, GL.ClampToEdge))
 
 -- renderAll is for test purpose. It simplely renders every submesh
-renderAll :: [Maybe ResourceId] -> Mesh -> World GLResource ()
+renderAll :: FileSystem fs => [Maybe ResourceId] -> Mesh -> World fs GLResource ()
 renderAll rep_tex mesh = -- (\r -> withMaterial mesh r (drawSubMesh mesh (r_geoset_ r))) (renderpasses_ mesh !! 1)
                          mapM_ (\r -> withMaterial rep_tex mesh r (drawSubMesh mesh (r_geoset_ r))) (renderpasses_ mesh)

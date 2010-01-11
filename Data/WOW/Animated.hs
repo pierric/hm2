@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeFamilies, EmptyDataDecls, FlexibleInstances, FlexibleContexts, BangPatterns #-}
-module Data.WOW.Animated where
+module Data.WOW.Animated(Animated, PackedFloat, PackedQuaternion,newAnimated,at) where
 
 import Data.Tensor
 import Data.Binary(get,Get)

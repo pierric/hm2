@@ -22,12 +22,6 @@ import Data.WOW.GL.Types
 import Data.WOW.FileSystem
 import Data.WOW.World
 
---import Graphics.GD as GD
---import Foreign.Marshal.Array
---import Debug.Trace
---import Text.Printf
---import Data.Bits
-
 newTexture :: ResourceId -> IO Texture
 newTexture fpath = do 
   image <- loadImage $ localFilePath fpath
@@ -47,8 +41,8 @@ newTextureFromBLP typ raw = do
   [texture] <- GL.genObjectNames 1
   GL.textureBinding (glTextureType typ) GL.$= Just texture
   case raw of
-    BLPp n pal size@(w,h) ab raw -> allocaArray (w*h) (setupLayerP pal size ab raw)
-    BLPc n cty size@(w,h) raw    -> setupLayerC cty size raw
+    BLPp pal size@(w,h) ab raw -> allocaArray (w*h) (setupLayerP pal size ab raw)
+    BLPc cty size@(w,h) raw    -> setupLayerC cty size raw
   GL.textureFilter (glTextureType typ) GL.$= ((GL.Linear',Nothing),GL.Linear')
   GL.textureWrapMode GL.Texture2D GL.R GL.$= (GL.Repeated, GL.Clamp)
   GL.textureWrapMode GL.Texture2D GL.S GL.$= (GL.Repeated, GL.ClampToEdge)

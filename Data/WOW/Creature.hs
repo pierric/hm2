@@ -20,7 +20,7 @@ data Creature = Creature{ _crea_name     :: String
                         -- _crea_position :: Vector3 Float 
                         }
 
-newCreature :: String -> Int -> World r Creature
+-- newCreature :: FileSystem f => String -> Int -> World f r Creature
 newCreature fn skin = do sk <- creatureSkinList fn
                          let ss = case lookup skin (zip [0..] sk) of
                                     Just x  -> x                                 -- the chosen skin
@@ -31,7 +31,7 @@ newCreature fn skin = do sk <- creatureSkinList fn
                                           , _crea_resource = ("MPQ:" ++ fn ++ ".m2")
                                           , _crea_skin     = ss }
 
-creatureSkinList :: String -> World r [Skin]
+-- creatureSkinList :: FileSystem f => String -> World f r [Skin]
 creatureSkinList fn = assert (not (null fn)) $
                       do mdb <- creatureModelDB
                          sdb <- creatureSkinDB
