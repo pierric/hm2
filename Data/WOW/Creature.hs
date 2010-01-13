@@ -36,17 +36,15 @@ creatureSkinList fn = assert (not (null fn)) $
                       do mdb <- creatureModelDB
                          sdb <- creatureSkinDB
                          let rec   = filter ((cmpString (fn ++ ".mdx")) . fieldS CreatureModelFilename) $ records mdb 
-                         return $ case rec of 
-                                    []  -> []
-                                    [x] -> if fieldI CreatureModelType x /= 4
-                                           then let id = fieldI CreatureModelID x
-                                                    rs = filter ((==id) . fieldI CreatureSkinModelID) $ records sdb
-                                                    ss = nub $ map (\r -> replicate 11 Nothing ++
-                                                                          [maybe $ fieldS CreatureSkin0 r
-                                                                          ,maybe $ fieldS CreatureSkin1 r
-                                                                          ,maybe $ fieldS CreatureSkin2 r]) rs
-                                                in  filter (not . null . catMaybes) ss
-                                           else []
+                         return $ nub $ concatMap (\x -> if fieldI CreatureModelType x /= 4
+                                                         then let id = fieldI CreatureModelID x
+                                                                  rs = filter ((==id) . fieldI CreatureSkinModelID) $ records sdb
+                                                                  ss = nub $ map (\r -> replicate 11 Nothing ++
+                                                                                        [maybe $ fieldS CreatureSkin0 r
+                                                                                        ,maybe $ fieldS CreatureSkin1 r
+                                                                                        ,maybe $ fieldS CreatureSkin2 r]) rs
+                                                              in  filter (not . null . catMaybes) ss
+                                                         else []) rec
     where maybe "" = Nothing
           maybe x  = let r = tail $ reverse $ splitPath fn
                      in  assert (not (null r)) $ Just $ "MPQ:" ++ (joinPath $ reverse (x:r)) ++ ".blp"

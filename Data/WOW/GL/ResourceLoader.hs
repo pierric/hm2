@@ -15,8 +15,8 @@ import Data.WOW.GL.Texture
 glResourceLoader :: (FileSystem f) => [ResourceLoader f GLResource]
 glResourceLoader = [ ResourceLoader (flip checkExt ".m2")
                                     (\fp -> do fs <- getM filesystem
-                                               x <- lift $ openM2 fs fp
-                                               y <- newMesh x
+                                               x  <- lift (openM2 fs fp)
+                                               y  <- newMesh x
                                                return $ GLModel x y)
                    , ResourceLoader (flip checkExt ".blp") 
                                     (\fp -> do fs <- getM filesystem 

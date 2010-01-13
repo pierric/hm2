@@ -17,6 +17,7 @@ import Data.Maybe(catMaybes, fromJust)
 import System.FilePath.Windows
 
 import Data.WOW.World
+import Data.WOW.ModelDef
 import Data.WOW.M2Model
 import Data.WOW.Creature 
 import Data.WOW.Matrix
@@ -34,6 +35,7 @@ canvas_width  = 700
 canvas_height = 500
 
 main = do
+  GLUT.getArgsAndInitialize
   initGUI
   initGL
 
@@ -184,7 +186,7 @@ myDisplay world mass creaR = do
   clear [ColorBuffer, DepthBuffer]
   matrixMode $= Modelview 0
   loadIdentity
-  gluLookAt 0.0 0.0 15
+  gluLookAt 0.0 0.0 30
             0.0 5.0 0.0
             0.0 1.0 0.0
   GL.rotate (90 :: GLfloat) (Vector3 (-1) 0 0)
@@ -197,7 +199,7 @@ myDisplay world mass creaR = do
                           | otherwise
                               -> -- lift $ drawBone' (fromList view) anim time (m_bones_ mdl)
                                  let matrix = transform (fromList view) anim time (m_bones_ mdl)
-                                 in  skeletonAnim matrix msh >>= renderAll (_crea_skin crea)
+                                 in  skeletonAnim matrix msh >>= renderAll (_crea_skin crea)  >> drawBounding mdl
                   )
 
 drawBone' view anim time bones
@@ -206,8 +208,7 @@ drawBone' view anim time bones
       in  drawBone $ map (\(bn,np) -> bn{ bone_pivot_ = np}) $ zip bones pivots
     
 drawBone bones
-    = do let gf = realToFrac :: Float -> GLfloat
-         depthFunc $= Nothing
+    = do depthFunc $= Nothing
          lighting  $= Disabled
          GLUT.lineWidth $= 2
          color (Color3 (gf 0) 0 0)
@@ -231,6 +232,15 @@ drawBone bones
          color (Color3 (gf 1) 0 0)
          renderPrimitive Points (vertex (Vertex3 (gf x0) (gf y0) (gf z0)))
 
+drawBounding mdl = {-- lift $ do GLUT.pointSize $= 3
+                             let (is,vs) = m_bounding_volume_ mdl
+                             renderPrimitive Triangles (mapM_ (\idx -> let (Vector3 a b c) = vs !! idx 
+                                                                       in  vertex (Vertex3 (gf a) (gf b) (gf c))) is) --}
+                   -- lift $ GLUT.renderObject GLUT.Wireframe (GLUT.Sphere' (realToFrac $ vertexRadius_ $ m_bounding_ mdl) 10 10)
+                   lift $ GLUT.renderObject GLUT.Wireframe (GLUT.Sphere' (realToFrac $ vertexRadius_ $ m_bounding_ mdl) 10 10)
+
+gf = realToFrac :: Float -> GLfloat
+
 ma = "World\\Expansion02\\Doodads\\Generic\\TUSKARR\\Tables\\TS_Long_Table_01"
 mb = "world\\goober\\g_xmastree"
 mc = "Character\\BloodElf\\Male\\BloodElfMale"
@@ -239,7 +249,8 @@ me = "Creature\\Cat\\Cat"
 mf = "Creature\\Chimera\\Chimera"
 mg = "Creature\\Dragon\\Onyxiamount"
 mh = "Creature\\BloodElfGuard\\BloodElfMale_Guard"
-mm = mg
+mi = "Creature\\AncientOfWar\\AncientofWar"
+mm = mi
 
 -- withWorld :: IORef (WorldState res) -> World res a -> IO a
 withWorld w0 action = do a     <- readIORef w0

@@ -6,7 +6,8 @@ module Data.WOW.M2Model( M2Model(..)
                        , Geoset
                        , Attachment
                        , Animation(..)
-                       , openM2) where
+                       , openM2
+                       , module Data.WOW.ModelDef) where
 
 import Data.Bits((.&.))
 import Data.Binary
@@ -38,6 +39,8 @@ data M2Model = M2Model{ m_global_sequence_ :: ![Int]
                       , m_keybone_lookup_  :: ![Int]
                       , m_animations_      :: ![Animation]
                       , m_anim_lookup_     :: ![Int]
+                      , m_bounding_        :: PhysicsSettings
+                      , m_bounding_volume_ :: ([Int],[Vector3 Float])
                       }
 
 type Vertex = VertexDef
@@ -107,6 +110,9 @@ openM2 fs fpath = do
       !kblk = bunchOf (nKeyBoneLookup_ def)      (ofsKeyBoneLookup_ def)   getUShort
       -- animation lookups 
       !anlk = bunchOf (nAnimationLookup_ def)    (ofsAnimationLookup_ def) getUShort
+
+      !bounding_indices = bunchOf (nBoundingTriangles_ def) (ofsBoundingTriangles_ def) getUShort
+      !bounding_vertices  = bunchOf (nBoundingVertices_ def)  (ofsBoundingVertices_ def)  (get :: Get (Vector3 Float))
   
   -- textures
   let textures = assert (nTextures_ def < 32) $ 
@@ -145,7 +151,10 @@ openM2 fs fpath = do
                   , m_bones_           = bones
                   , m_keybone_lookup_  = kblk
                   , m_animations_      = animations
-                  , m_anim_lookup_     = anlk }
+                  , m_anim_lookup_     = anlk 
+                  , m_bounding_        = ps_ def
+                  , m_bounding_volume_ = (bounding_indices, bounding_vertices)
+                  }
 
 
 lod :: FileSystem fs => fs -> FilePath -> IO ([Int],[GeosetDef],[TexUnitDef])

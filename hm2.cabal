@@ -17,7 +17,8 @@ Build-Type:          Simple
 
 Library
   Build-Depends:       base, bytestring
-  Exposed-Modules:     Data.WOW.ModelDef, Data.WOW.M2Model, Data.WOW.BLP, Data.WOW.Bone, Data.WOW.Matrix, Data.WOW.Quaternion, Data.WOW.Animated, Data.WOW.DBC, 
+  Exposed-Modules:     Data.WOW.ModelDef, Data.WOW.M2Model, Data.WOW.BLP, Data.WOW.Bone, Data.WOW.Matrix, Data.WOW.Quaternion,
+                       Data.WOW.Animated, Data.WOW.DBC, Data.WOW.Creature,
                        Data.WOW.World, Data.WOW.WorldTemplate, Data.WOW.FileSystem, Data.WOW.Utils,
                        Data.WOW.GL.Types, Data.WOW.GL.ResourceLoader, Data.WOW.GL.Mesh, Data.WOW.GL.Texture
   ghc-options:         -Wall
