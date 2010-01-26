@@ -31,10 +31,10 @@ rotate (Quaternion (i,j,k,r))
           jk = 2*j*k; ki = 2*k*i; ij = 2*i*j
       in  r2 `seq` i2 `seq` j2 `seq` k2 `seq`
           ri `seq`rj `seq` rk `seq` jk `seq` ki `seq` ij `seq`
-          listArray ((0,0),(3,3)) [ r2+i2-j2-k2, ij-rk       , ki+rj       , 0
-                                  , ij+rk      , r2-i2+j2-k2 , jk-ri       , 0 
-                                  , ki-rj      , jk+ri       , r2-i2-j2+k2 , 0
-                                  , 0          , 0           , 0           , 1 ]
+          fromList [ r2+i2-j2-k2, ij-rk       , ki+rj       , 0
+                   , ij+rk      , r2-i2+j2-k2 , jk-ri       , 0 
+                   , ki-rj      , jk+ri       , r2-i2-j2+k2 , 0
+                   , 0          , 0           , 0           , 1 ]
 identityQ = Quaternion (0,0,0,1)
 
 {--

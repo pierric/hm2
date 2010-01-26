@@ -25,6 +25,6 @@ Library
 
 Executable test3
   main-is:             test3.hs
-  build-depends:       base, array, containers, bytestring, monads-fd, transformers, filepath, binary, data-binary-ieee754, fclabels, Tensor, vector-space, pcre-light, OpenGL, OpenGLRaw, GLUT, GLURaw, template-haskell, stb-image == 0.1.3, gtk, gtkglext, MaybeT, hdds
+  build-depends:       base, array, containers, bytestring, monads-fd, transformers, filepath, binary, data-binary-ieee754, fclabels, Tensor, vector-space, pcre-light, OpenGL, OpenGLRaw, GLUT, GLURaw, template-haskell, stb-image == 0.1.3, gtk, gtkglext, MaybeT, hmatrix, hdds
 
 
