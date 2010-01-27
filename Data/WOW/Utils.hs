@@ -47,22 +47,22 @@ triple_t (Vector3 a b c) = (a,b,c)
 quad_f (a,b,c,d) = Vector4 a b c d
 quad_t (Vector4 a b c d) = (a,b,c,d)
 
-instance AdditiveGroup (Vector3 Float) where
+instance AdditiveGroup a => AdditiveGroup (Vector3 a) where
     zeroV   = triple_f zeroV
     a ^+^ b = triple_f $ triple_t a ^+^ triple_t b
     negateV = triple_f . negateV . triple_t
 
-instance VectorSpace (Vector3 Float) where
-    type Scalar (Vector3 Float) = Float
+instance VectorSpace a => VectorSpace (Vector3 a) where
+    type Scalar (Vector3 a) = Scalar a
     s *^ vec = triple_f (s *^ triple_t vec)
     
-instance AdditiveGroup (Vector4 Float) where
+instance AdditiveGroup a => AdditiveGroup (Vector4 a) where
     zeroV   = quad_f zeroV
     a ^+^ b = quad_f $ quad_t a ^+^ quad_t b
     negateV = quad_f . negateV . quad_t
 
-instance VectorSpace (Vector4 Float) where
-    type Scalar (Vector4 Float) = Float
+instance VectorSpace (a => VectorSpace (Vector4 a) where
+    type Scalar (Vector4 a) = Scalar a
     s *^ vec = quad_f (s *^ quad_t vec)
 
 --fix3 (Vector3 x y z)     = Vector3 x z (-y)

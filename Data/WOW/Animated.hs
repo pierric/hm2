@@ -86,17 +86,18 @@ at' unused ani idx time default_
                    (s,e) = if null ps 
                            then (dt!!0,dt!!1)  -- not found in the sequence, take the first one
                            else head ps 
-                   r     = fromIntegral (time - fst s) / fromIntegral (fst e - fst s)
+                   r     = fromIntegral (tt - fst s) / fromIntegral (fst e - fst s)
                    show' (a,b) = "("++show a++","++ showK unused b++")"
                in  {--trace (show' s ++show' e++"~"++show r) $ --} interpolate ani (snd s) (snd e) r
           else if not (null dt)
                then {--trace "first" $ --} snd $ head dt
                else {--trace "default" $ --} default_
     where 
+      mt = last $ a_times_ ani !! idx
       tt = case a_global_ ani of 
-             Nothing -> time
+             Nothing -> time `mod` mt
              Just 0  -> 0
-             Just mt -> time `mod` mt
+             Just mg -> time `mod` (min mt mg)
       dt = zip (a_times_ ani !! idx) (a_data_ ani !! idx)
       interpolate (AnimatedNone _ _ _) s e r = s
       interpolate (AnimatedLinear _ _ _) s e r = lerp unused s e r
