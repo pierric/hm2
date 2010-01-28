@@ -1,4 +1,4 @@
-{-# OPTIONS -XFlexibleInstances -XTypeFamilies #-}
+{-# OPTIONS -XFlexibleInstances -XTypeFamilies -XUndecidableInstances #-}
 module Data.WOW.Utils where
 
 import Data.Binary
@@ -55,15 +55,21 @@ instance AdditiveGroup a => AdditiveGroup (Vector3 a) where
 instance VectorSpace a => VectorSpace (Vector3 a) where
     type Scalar (Vector3 a) = Scalar a
     s *^ vec = triple_f (s *^ triple_t vec)
+
+instance (s ~ Scalar a, InnerSpace a, AdditiveGroup s) => InnerSpace (Vector3 a) where
+    a <.> b = triple_t a <.> triple_t b
     
 instance AdditiveGroup a => AdditiveGroup (Vector4 a) where
     zeroV   = quad_f zeroV
     a ^+^ b = quad_f $ quad_t a ^+^ quad_t b
     negateV = quad_f . negateV . quad_t
 
-instance VectorSpace (a => VectorSpace (Vector4 a) where
+instance VectorSpace a => VectorSpace (Vector4 a) where
     type Scalar (Vector4 a) = Scalar a
     s *^ vec = quad_f (s *^ quad_t vec)
+
+instance (s ~ Scalar a, InnerSpace a, AdditiveGroup s) => InnerSpace (Vector4 a) where
+    a <.> b = quad_t a <.> quad_t b
 
 --fix3 (Vector3 x y z)     = Vector3 x z (-y)
 --fix4 (Vector4 x y z w)   = Vector4 x z (-y) w
