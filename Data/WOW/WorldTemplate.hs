@@ -11,11 +11,12 @@ import Data.WOW.DBC
 
 mkDB name source = do x <- let va = mkName "a"
                                vb = mkName "b"
-                           in  sigD funcName (forallT [va,vb] (cxt [appT (conT $ mkName "FileSystem") (varT va)]) $
-                                                      (conT $ mkName "World") `appT`
-                                                      (varT va) `appT`
-                                                      (varT vb) `appT`
-                                                      (conT $ mkName name))
+                           in  sigD funcName (forallT [PlainTV va,PlainTV vb]
+                                                  (cxt [classP (mkName "FileSystem") [varT va]])
+                                                  ((conT $ mkName "World") 
+                                                   `appT` (varT va) 
+                                                   `appT` (varT vb)
+                                                   `appT` (conT $ mkName name)))
                       y <- funD funcName [clause [] (normalB body) []]
                       return [x,y]
     where body = [| getM $(varE dbName) >>= 
