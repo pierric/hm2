@@ -1,7 +1,7 @@
 module Data.WOW.GL.Mesh where
 
 import Data.Word
-import Data.Tensor
+import Graphics.Rendering.OpenGL.GL.Tensor
 import qualified Graphics.Rendering.OpenGL.GL as GL
 import qualified Graphics.Rendering.OpenGL.GLU as GLU
 import Foreign.Marshal.Array
@@ -22,7 +22,7 @@ import Data.WOW.ModelDef
 import Data.WOW.Matrix
 import Data.WOW.Utils
 import Data.WOW.FileSystem
-import Data.WOW.GL.Types
+import Data.WOW.GL.Types as GLTypes
 
 -- Build up a mesh object with OpenGL
 newMesh :: FileSystem fs => M2Model -> World fs GLResource Mesh
@@ -120,7 +120,7 @@ withMaterial rep_tex mesh rp act =
                           GL.alphaFunc GL.$= Nothing
                           GL.textureBinding GL.Texture2D GL.$= Nothing
                           act
-         Just (GLTexture tex)
+         Just (GLTexture (GLTypes.Texture txtyp txobj))
              -> lift $ do case r_blendmode_ rp of
                             0 -> return ()
                             1 -> GL.alphaFunc    GL.$= Just (GL.Gequal, 0.7)
@@ -142,7 +142,7 @@ withMaterial rep_tex mesh rp act =
                           when (r_useEnvMap_ rp) (putStrLn "requires environment map")
                           when (r_texanim_ rp>=0) (putStrLn "requires texture animation")
                           when (r_unlit_ rp) (GL.lighting GL.$= GL.Disabled)
-                          GL.textureBinding (glTextureType (tx_type_ tex)) GL.$= Just (tx_object_ tex)
+                          GL.textureBinding txtyp GL.$= Just txobj
                           act
                           GL.blend     GL.$= GL.Disabled
                           GL.alphaFunc GL.$= Nothing

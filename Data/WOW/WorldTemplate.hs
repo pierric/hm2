@@ -1,7 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Data.WOW.WorldTemplate(db) where
 
-import Data.Record.Label
+import Data.Label
+import Data.Label.Monadic
 import Language.Haskell.TH
 import Data.Char(toLower)
 import Control.Monad.Trans(lift)
@@ -19,14 +20,14 @@ mkDB name source = do x <- let va = mkName "a"
                                                    `appT` (conT $ mkName name)))
                       y <- funD funcName [clause [] (normalB body) []]
                       return [x,y]
-    where body = [| getM $(varE dbName) >>= 
+    where body = [| gets $(varE dbName) >>= 
                     (\m -> case m of Just a  -> return a
-                                     Nothing -> do fs <- getM $(varE (mkName "filesystem"))
+                                     Nothing -> do fs <- gets $(varE (mkName "filesystem"))
                                                    ct <- lift (findFile fs $(litE $ stringL source))
                                                    case ct of 
                                                      Nothing -> error $ "Cannot find DBC:" ++ $(litE $ stringL source)
                                                      Just db -> let db' = open db
-                                                                in  setM $(varE dbName) (Just db')  >> return db') |]
+                                                                in  puts $(varE dbName) (Just db')  >> return db') |]
           funcName = mkName $ toLower (head name) : tail name
           dbName   = mkName $ "db_" ++ let l = length name in take (l-2) (map toLower name)
 

@@ -7,7 +7,7 @@ import Data.Binary.IEEE754
 import Data.Word
 import Data.Int
 import Control.Monad(ap)
-import Data.Tensor
+import Graphics.Rendering.OpenGL.GL.Tensor
 import Text.Printf
 
 import Data.WOW.Utils

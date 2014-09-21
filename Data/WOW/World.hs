@@ -2,7 +2,8 @@
 module Data.WOW.World where
 
 import qualified Control.Monad.State.Lazy as S
-import Data.Record.Label
+import Data.Label
+import qualified Data.Label.Monadic as LM
 import qualified Data.Map as M
 import qualified Data.ByteString.Lazy as BS
 import Control.Category((>>>))
@@ -33,19 +34,19 @@ $(mkLabels [''WorldState,''ResourceLibrary])
 
 -- Resource
 findResource :: FileSystem f => ResourceId -> World f r (Maybe r)
-findResource id = do lib <- getM (resLibrary >>> collection)
+findResource id = do lib <- LM.gets (resLibrary >>> collection)
                      case M.lookup id lib of
                        Just x  -> return (Just x)
-                       Nothing -> do chk <- getM (resLibrary >>> loader) 
+                       Nothing -> do chk <- LM.gets (resLibrary >>> loader) 
                                      -- get those valid loaders
                                      case filter (\ldr -> _validate ldr id) chk of
                                        ldr:_ -> do res <- _new ldr id
-                                                   modM (resLibrary >>> collection) (M.insert id res)
+                                                   LM.modify (resLibrary >>> collection) (M.insert id res)
                                                    return (Just res)
                                        []    -> return Nothing
 
 --findFile :: FileSystem f => ResourceId -> World f r (Maybe BS.ByteString)
---findFile id = do fs <- getM filesystem
+--findFile id = do fs <- LM.gets filesystem
 --                 lift $ FS.findFile fs id
                  
 

@@ -33,17 +33,17 @@ newTexture fpath = do
                       GLU.build2DMipmaps GL.Texture2D GL.RGBA' (fromIntegral w) (fromIntegral h)
                                          (GL.PixelData GL.RGBA GL.UnsignedByte ptr)
                       GL.textureFilter GL.Texture2D GL.$= ((GL.Linear',Nothing),GL.Linear')
-                      return (Texture TEX_TYPE_2D texture) )
+                      return (Texture tex_type_2d texture) )
 
 
-newTextureFromBLP :: TextureType -> BLP -> IO Texture
+newTextureFromBLP :: (GL.BindableTextureTarget t, GL.ParameterizedTextureTarget t) => t -> BLP -> IO Texture
 newTextureFromBLP typ raw = do
   [texture] <- GL.genObjectNames 1
-  GL.textureBinding (glTextureType typ) GL.$= Just texture
+  GL.textureBinding typ GL.$= Just texture
   case raw of
     BLPp pal size@(w,h) ab raw -> allocaArray (w*h) (setupLayerP pal size ab raw)
     BLPc cty size@(w,h) raw    -> setupLayerC cty size raw
-  GL.textureFilter (glTextureType typ) GL.$= ((GL.Linear',Nothing),GL.Linear')
+  GL.textureFilter typ GL.$= ((GL.Linear',Nothing),GL.Linear')
   GL.textureWrapMode GL.Texture2D GL.R GL.$= (GL.Repeated, GL.Clamp)
   GL.textureWrapMode GL.Texture2D GL.S GL.$= (GL.Repeated, GL.ClampToEdge)
   GL.textureWrapMode GL.Texture2D GL.T GL.$= (GL.Repeated, GL.ClampToEdge)  
@@ -69,7 +69,7 @@ newTextureFromBLP typ raw = do
               let s = w'*h'
               forM_ (zip3 [0..] (BS.unpack r) (alpha ab (BS.drop s r))) (\(o,i,a) ->
                 poke (buf `plusPtr` o) (fix (pal ! fromIntegral i) a))
-              GL.texImage2D Nothing GL.NoProxy
+              GL.texImage2D tex_type_2d GL.NoProxy
                             l GL.RGBA8 (GL.TextureSize2D (fromIntegral w') (fromIntegral h')) 0 
                             (GL.PixelData GL.RGBA GL.UnsignedByte buf) )
 
@@ -82,7 +82,7 @@ newTextureFromBLP typ raw = do
                                           DXT3' -> DXT3
                                           DXT5' -> DXT5
                    in  withDecompressed t' (BS.unpack r) w' h' (\pp -> 
-                         GL.texImage2D Nothing GL.NoProxy l GL.RGBA'
+                         GL.texImage2D tex_type_2d GL.NoProxy l GL.RGBA'
                                        (GL.TextureSize2D (fromIntegral w') (fromIntegral h')) 0 
                                        (GL.PixelData GL.RGBA GL.UnsignedByte pp))
               else let (buf,offset,len) = toForeignPtr r
@@ -92,7 +92,7 @@ newTextureFromBLP typ raw = do
                        sz      = ((w'+3)`div`4) * ((h'+3)`div`4) * blksz
                        (nw,nh) = if len == 8 && sz == 16 && w'==2 && h'==8 then (2,4) else (w',h')
                    in  withForeignPtr buf (\pb -> do
-                         GL.compressedTexImage2D Nothing GL.NoProxy l 
+                         GL.compressedTexImage2D tex_type_2d GL.NoProxy l 
                                                  (GL.TextureSize2D (fromIntegral nw) (fromIntegral nh)) 0
                                                  (GL.CompressedPixelData glctype (fromIntegral len) 
                                                  (pb `plusPtr` offset))

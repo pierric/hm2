@@ -1,8 +1,8 @@
 module Data.WOW.Bone(Bone(..), transform)  where
 
 import Control.Arrow((&&&))
-import Data.Tensor
 import Data.VectorSpace(negateV)
+import Graphics.Rendering.OpenGL.GL.Tensor
 
 import Data.WOW.Animated
 import Data.WOW.Quaternion

@@ -12,7 +12,8 @@ module Data.WOW.M2Model( M2Model(..)
 import Data.Bits((.&.))
 import Data.Binary
 import Data.List(sort)
-import Data.Tensor
+-- import Data.Tensor
+import Graphics.Rendering.OpenGL.GL.Tensor
 import Data.Ord
 import Text.Printf
 import qualified Data.ByteString.Lazy as BS
@@ -72,7 +73,10 @@ data Animation  = Animation{ anim_Id_
 
 openM2 :: FileSystem fs => fs -> String -> IO M2Model
 openM2 fs fpath = do
-  Just archive <- findFile fs fpath
+  marchive <- findFile fs fpath
+  let archive = case marchive of
+                  Nothing -> error ("cannot find " ++ fpath) 
+                  Just a  -> a
   let def  = decode archive :: Header
   assert (nViews_ def > 0) (return ())
              

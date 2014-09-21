@@ -158,7 +158,7 @@ myInit world creaR (animSel,animM) skinSel = do
   matrixMode $= Modelview 0
   loadIdentity
   
-  withWorld world $ do crea <- newCreature mm 0
+  withWorld world $ do crea <- newCreature mm (0 :: Int)
                        lift $ writeIORef creaR crea
                        sl   <- creatureSkinList (_crea_name crea)
                        Just (GLModel mdl msh) <- findResource (_crea_resource crea)
@@ -250,7 +250,7 @@ mf = "Creature\\Chimera\\Chimera"
 mg = "Creature\\Dragon\\Onyxiamount"
 mh = "Creature\\BloodElfGuard\\BloodElfMale_Guard"
 mi = "Creature\\AncientOfWar\\AncientofWar"
-mm = mi
+mm = mf
 
 -- withWorld :: IORef (WorldState res) -> World res a -> IO a
 withWorld w0 action = do a     <- readIORef w0

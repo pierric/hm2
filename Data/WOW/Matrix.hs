@@ -1,6 +1,6 @@
 module Data.WOW.Matrix(Matrix,mult, multVec3, identity4, translation, scale, inverse, fromList) where
 
-import Data.Tensor
+import Graphics.Rendering.OpenGL.GL.Tensor
 import qualified Numeric.LinearAlgebra as L
 import Control.Exception
 

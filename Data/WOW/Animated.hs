@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies, EmptyDataDecls, FlexibleInstances, FlexibleContexts, BangPatterns #-}
 module Data.WOW.Animated(Animated, PackedFloat, PackedQuaternion,newAnimated,at) where
 
-import Data.Tensor
+import Graphics.Rendering.OpenGL.GL.Tensor
 import Data.Binary(get,Get)
 import Control.Exception
 import qualified Data.ByteString.Lazy as BS
@@ -65,7 +65,9 @@ newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global 
               AnimatedHermite gs times (every3 keys) (every3 (tail keys)) (every3 (drop 2 keys))
 
     where
+      bunchOf  :: Int -> Int -> Get a -> [a]
       bunchOf  s o g = getBunchOf s g (BS.drop (fromIntegral o) mpq)
+      bunchOf' :: Int -> Int -> Int -> Get a -> [a]
       bunchOf' i s o g = case anim !! i of
                            Nothing -> getBunchOf s g (BS.drop (fromIntegral o) mpq)
                            Just x  -> getBunchOf s g (BS.drop (fromIntegral o) x)
@@ -87,7 +89,7 @@ at' unused ani idx time default_
                            then (dt!!0,dt!!1)  -- not found in the sequence, take the first one
                            else head ps 
                    r     = fromIntegral (tt - fst s) / fromIntegral (fst e - fst s)
-                   show' (a,b) = "("++show a++","++ showK unused b++")"
+                   -- show' (a,b) = "("++show a++","++ showK unused b++")"
                in  {--trace (show' s ++show' e++"~"++show r) $ --} interpolate ani (snd s) (snd e) r
           else if not (null dt)
                then {--trace "first" $ --} snd $ head dt

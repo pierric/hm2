@@ -21,7 +21,7 @@ instance FileSystem MockMPQ where
     findFile (MockMPQ prefix) fpath = fromJust $ match local fpath [] ~> myhandle . BS.readFile
                                              ||| match mpq   fpath [] ~> myhandle . BS.readFile . joinPath . (prefix ++) . W.splitDirectories . lower
                                              ||| Just (putStrLn ("unknown resource type[" ++ fpath ++"]") >> return Nothing)
-        where myhandle x = fmap Just x `Prelude.catch` (\_ -> return Nothing)
+        where myhandle x = fmap Just x `catch` (\ (e :: SomeException) -> return Nothing)
 
 checkExt :: FilePath -> String -> Bool
 checkExt fpath ext = fromJust $ match local fpath [] ~> (== lower ext) . lower . takeExtension

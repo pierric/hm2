@@ -7,7 +7,8 @@ import Data.Binary.Get
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.ByteString.Internal(w2c)
 import Data.Int
-import Data.Tensor
+-- import Data.Tensor
+import Graphics.Rendering.OpenGL.GL.Tensor
 import Control.Monad(ap)
 import Data.VectorSpace
 import Data.Char
