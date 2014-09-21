@@ -2,7 +2,7 @@ module Data.WOW.GL.Types where
 
 import Data.Word
 import qualified Graphics.Rendering.OpenGL.GL as GL
-import Data.Tensor
+import Graphics.Rendering.OpenGL.GL.Tensor
 
 import qualified Data.WOW.M2Model as M2
 import Data.WOW.BLP(CTYPE(..))
@@ -31,17 +31,14 @@ data Mesh = Mesh{ vertices_     :: (Int,GL.BufferObject)
                 , bone_weight_  :: [(BoneWeight,BoneWeight,BoneWeight,BoneWeight)]
                 }
 
-data Texture = Texture{ -- tx_name_   :: String
-                        tx_type_   :: TextureType
-                      , tx_object_ :: GL.TextureObject 
-                      }
+data Texture   = forall t. (GL.BindableTextureTarget t) =>
+                 Texture{ -- tx_name_   :: String
+                          tx_type_   :: t
+                        , tx_object_ :: GL.TextureObject 
+                        }
 
-data TextureType = TEX_TYPE_1D
-                 | TEX_TYPE_2D
-                 | TEX_TYPE_3D
-                 | TEX_TYPE_CUBE_MAP
+tex_type_1d       = GL.Texture1D
+tex_type_2d       = GL.Texture2D
+tex_type_3d       = GL.Texture3D
+tex_type_cube_map = GL.TextureCubeMap
 
-glTextureType TEX_TYPE_1D = GL.Texture1D
-glTextureType TEX_TYPE_2D = GL.Texture2D
-glTextureType TEX_TYPE_3D = GL.Texture3D
-glTextureType TEX_TYPE_CUBE_MAP = GL.TextureCubeMap
