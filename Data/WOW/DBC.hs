@@ -10,7 +10,6 @@ import Data.Binary.Get
 import Data.Word
 import Control.Exception
 
-import Data.WOW.FileSystem
 import Data.WOW.Utils
  
 fieldI :: (DBC a, f ~ Field a) => f -> Record a -> Int
@@ -30,9 +29,7 @@ class DBC a where
 
 ------------------------------------------------------------------------------------------
 
-data Record a = Record{ rec_dbc    :: DbcDesc
-                      , rec_offset :: !Word32
-                      }
+data Record a = Record DbcDesc !Word32
 
 data DbcDesc = DbcDesc{ dbc_rnumber :: !Word32
                       , dbc_rsize   :: !Word32
@@ -40,9 +37,6 @@ data DbcDesc = DbcDesc{ dbc_rnumber :: !Word32
                       , dbc_strings :: BS.ByteString
                       }                      
  
-openDBC :: FilePath -> IO DbcDesc
-openDBC rid = BS.readFile rid  >>= return . openDBCfromByteString
-
 openDBCfromByteString :: BS.ByteString -> DbcDesc
 openDBCfromByteString bs = 
   let [hd,nr,nf,sr,ss] = runGet (sequence $ take 5 $ repeat getUInt) bs

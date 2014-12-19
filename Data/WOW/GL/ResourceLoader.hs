@@ -1,9 +1,7 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Data.WOW.GL.ResourceLoader(glResourceLoader) where
 
-import Control.Monad.Trans(lift)
-import Data.Label
-import qualified Data.Label.Monadic as LM
-import Data.Char
+import Control.Monad.Trans
 
 import Data.WOW.World
 import Data.WOW.FileSystem
@@ -13,15 +11,16 @@ import Data.WOW.GL.Types
 import Data.WOW.GL.Mesh
 import Data.WOW.GL.Texture
 
-glResourceLoader :: (FileSystem f) => [ResourceLoader f GLResource]
+glResourceLoader :: (M2World m f GLResource) => [ResourceLoader m GLResource]
 glResourceLoader = [ ResourceLoader (flip checkExt ".m2")
-                                    (\fp -> do fs <- LM.gets filesystem
-                                               x  <- lift (openM2 fs fp)
+                                    (\fp -> do fs <- getWorldField filesystem
+                                               x  <- liftIO (openM2 fs fp)
                                                y  <- newMesh x
                                                return $ GLModel x y)
                    , ResourceLoader (flip checkExt ".blp") 
-                                    (\fp -> do fs <- LM.gets filesystem 
-                                               Just ct <- lift $ findFile fs fp 
-                                               tx <- lift $ newTextureFromBLP tex_type_2d (openBLPfromByteString ct)
+                                    (\fp -> do fs      <- getWorldField filesystem 
+                                               Just ct <- liftIO $ findFile fs fp 
+                                               tx      <- liftIO $
+                                                 newTextureFromBLP tex_type_2d (openBLPfromByteString ct)
                                                return $ GLTexture tx) 
                    ]

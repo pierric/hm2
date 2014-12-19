@@ -5,15 +5,12 @@ import Data.Binary
 import Data.Binary.IEEE754
 import Data.Binary.Get
 import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.ByteString.Internal(w2c)
 import Data.Int
 -- import Data.Tensor
 import Graphics.Rendering.OpenGL.GL.Tensor
 import Control.Monad(ap)
 import Data.VectorSpace
 import Data.Char
-
-import Data.WOW.Quaternion
 
 getCChar  :: Get Char
 getCChar  = get
@@ -33,6 +30,15 @@ getBunchOf :: Int -> Get a -> BS.ByteString -> [a]
 getBunchOf cnt g content = runGet (sequence $ replicate cnt g) content
 
 
+{--
+ -  A couple of 'orphan instances' of Binary
+ -
+ -  It is necessary because we do need to deserialize these types,
+ -  however they are not designed to be so in neither Binary nor
+ -  Tensor
+ -
+ --}
+
 instance Binary (Vector3 Float) where
     get   = return Vector3 `ap` getFloat32le `ap` getFloat32le `ap` getFloat32le
     put _ = error "cannot save Vector3"
@@ -41,11 +47,14 @@ instance Binary (Vector2 Float) where
     get   = return Vector2 `ap` getFloat32le `ap` getFloat32le
     put _ = error "cannot save Vector2"
 
-
+triple_f :: (a, a, a) -> Vector3 a
 triple_f (a,b,c) = Vector3 a b c
+triple_t :: Vector3 a -> (a,a,a)
 triple_t (Vector3 a b c) = (a,b,c)
 
+quad_f :: (a,a,a,a) -> Vector4 a
 quad_f (a,b,c,d) = Vector4 a b c d
+quad_t :: Vector4 a -> (a,a,a,a)
 quad_t (Vector4 a b c d) = (a,b,c,d)
 
 instance AdditiveGroup a => AdditiveGroup (Vector3 a) where
@@ -75,10 +84,11 @@ instance (s ~ Scalar a, InnerSpace a, AdditiveGroup s) => InnerSpace (Vector4 a)
 --fix3 (Vector3 x y z)     = Vector3 x z (-y)
 --fix4 (Vector4 x y z w)   = Vector4 x z (-y) w
 --unfix4 (Vector4 x y z w) = Vector4 x (-z) y w
+to4 :: Num a => Vector3 a -> Vector4 a
 to4 (Vector3 x y z)      = Vector4 x y z 1
-fix3 = id
-fix4 = id
-unfix4 = id
+--fix3 = id
+--fix4 = id
+--unfix4 = id
 
 -- compare two string case-insensibly
 cmpString :: String -> String -> Bool

@@ -45,7 +45,7 @@ at :: KeyStore a => Animated a
 at = at' undefined
 
 newAnimated' :: KeyStore a => a -> AnimationBlock -> [Int] -> BS.ByteString -> [Maybe BS.ByteString] -> Animated a
-newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global mpq anim =
+newAnimated' unused (AnimationBlock typ seq_ ntime otime nkey okey) global mpq anim =
   let -- get (number of timestamps,offset) paris, from offset of timeblock
       !ht    = bunchOf ntime otime getHeader
       -- get (number of keys, offset) paris, from offset of keyblock
@@ -55,7 +55,7 @@ newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global 
       -- get data for each of (number,offset) paris
       !keys  = map (\(i,(nentry,oentry)) -> bunchOf' i nentry oentry (getKey unused)) $ zip [0..] hk
       -- global sequence
-      !gs    = if seq == -1 then Nothing else assert (0 <= seq && seq < length global) (Just $ global!!seq)
+      !gs    = if seq_ == -1 then Nothing else assert (0 <= seq_ && seq_ < length global) (Just $ global!!seq_)
   in  -- not every bone have data of every animation
       assert (ntime == nkey) $ 
       case () of 
@@ -63,6 +63,8 @@ newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global 
               AnimatedLinear  gs times keys
         _ | typ == 2             -> 
               AnimatedHermite gs times (every3 keys) (every3 (tail keys)) (every3 (drop 2 keys))
+        _                        ->
+              error "Unknown type of animation"
 
     where
       bunchOf  :: Int -> Int -> Get a -> [a]
@@ -73,7 +75,7 @@ newAnimated' unused block@(AnimationBlock typ seq ntime otime nkey okey) global 
                            Just x  -> getBunchOf s g (BS.drop (fromIntegral o) x)
       getHeader :: Get (Int,Int)
       getHeader = return (,) `ap` getUInt `ap` getUInt
-      every3 (x:y:z:r) = x:every3 r
+      every3 (x:_:_:r) = x:every3 r
       every3 _ = []
 
 at' :: KeyStore a => a -> Animated a -> Int -> Int -> KeyType a -> KeyType a
@@ -84,7 +86,7 @@ at' unused ani idx time default_
         = -- assert (idx >=0 && idx < length (a_data_ ani) && idx < length (a_times_ ani)) $
           assert (idx >= 0) $
           if (length dt > 1)
-          then let ps    = filter (\(s,e) -> fst s <= tt && tt < fst e) $ zip dt (tail dt)
+          then let ps    = filter (\(s',e') -> fst s' <= tt && tt < fst e') $ zip dt (tail dt)
                    (s,e) = if null ps 
                            then (dt!!0,dt!!1)  -- not found in the sequence, take the first one
                            else head ps 
@@ -101,9 +103,9 @@ at' unused ani idx time default_
              Just 0  -> 0
              Just mg -> time `mod` (min mt mg)
       dt = zip (a_times_ ani !! idx) (a_data_ ani !! idx)
-      interpolate (AnimatedNone _ _ _) s e r = s
+      interpolate (AnimatedNone _ _ _) s _ _ = s
       interpolate (AnimatedLinear _ _ _) s e r = lerp unused s e r
-      interpolate (AnimatedHermite _ _ _ _ _) s e r = assert False undefined
+      interpolate (AnimatedHermite _ _ _ _ _) _ _ _ = assert False undefined
 
 class KeyStore a where
     type KeyType a :: *
@@ -113,7 +115,7 @@ class KeyStore a where
 
 instance KeyStore PackedFloat where
     type KeyType PackedFloat = Float
-    getKey _ = do t <- getUShort
+    getKey _ = do t <- getUShort :: Get Int
                   return (fromIntegral t / 32767.0)
     lerp   _ = V.lerp
     showK  _ = show

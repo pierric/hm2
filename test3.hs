@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Main where
 
 import Graphics.Rendering.OpenGL.GL as GL -- hiding (scale,rotate)
@@ -15,6 +16,7 @@ import Data.Array
 import Data.VectorSpace
 import Data.Maybe(catMaybes, fromJust)
 import System.FilePath.Windows
+import qualified Control.Monad.State.Lazy as S
 
 import Data.WOW.World
 import Data.WOW.ModelDef
@@ -34,15 +36,27 @@ canvas_width, canvas_height :: Num a => a
 canvas_width  = 700
 canvas_height = 500
 
+type MyWorldState = WorldState World MockMPQ GLResource
+newtype World a = World { unWorld :: S.StateT MyWorldState IO a }
+
+instance M2World World MockMPQ GLResource where
+    getWorld = World S.get
+    modWorld = World . S.modify
+instance Monad World where
+    return = World . return
+    a >>= f = World (unWorld a >>= (\v -> unWorld (f v)))
+instance MonadIO World where
+    liftIO = World . liftIO
+
 main = do
   GLUT.getArgsAndInitialize
   initGUI
   initGL
 
   world  <- newIORef (WorldState{ _filesystem = MockMPQ ["..","tmp"]
-                                , _resLibrary = (ResourceLibrary glResourceLoader M.empty)
+                                , _resLibrary = ResourceLibrary glResourceLoader M.empty
                                 , _db_creaturemodel = Nothing 
-                                , _db_creatureskin  = Nothing })
+                                , _db_creatureskin  = Nothing } :: MyWorldState)
   mass   <- newIORef (-1,0)
   crea   <- newIORef undefined
 
@@ -159,26 +173,26 @@ myInit world creaR (animSel,animM) skinSel = do
   loadIdentity
   
   withWorld world $ do crea <- newCreature mm (0 :: Int)
-                       lift $ writeIORef creaR crea
+                       liftIO $ writeIORef creaR crea
                        sl   <- creatureSkinList (_crea_name crea)
                        Just (GLModel mdl msh) <- findResource (_crea_resource crea)
 
                        -- print all textures
-                       lift $ do mapM_ (\t -> case t of
-                                                Data.WOW.M2Model.Texture f _ -> putStrLn f
-                                                _ -> return ()
-                                       ) (m_textures_ mdl)
-                                 mapM_ (putStrLn . drop 4) (catMaybes $ concat sl)
+                       liftIO $ do mapM_ (\t -> case t of
+                                                  Data.WOW.M2Model.Texture f _ -> putStrLn f
+                                                  _ -> return ()
+                                         ) (m_textures_ mdl)
+                                   mapM_ (putStrLn . drop 4) (catMaybes $ concat sl)
 
-                       lift $ do -- fill in the model of combobox
-                                 listStoreClear animM
-                                 mapM_ (listStoreAppend animM) (zip [1::Int .. ] $ m_animations_ mdl)
-                                 -- select the first item if any
-                                 when (not $ null $ m_animations_ mdl)
-                                      (comboBoxSetActive animSel 0)
-                                 mapM_ (comboBoxAppendText skinSel . takeFileName . head . catMaybes) sl
-                                 when (not $ null $ sl)
-                                      (comboBoxSetActive skinSel 0)
+                       liftIO $ do -- fill in the model of combobox
+                                   listStoreClear animM
+                                   mapM_ (listStoreAppend animM) (zip [1::Int .. ] $ m_animations_ mdl)
+                                   -- select the first item if any
+                                   when (not $ null $ m_animations_ mdl)
+                                        (comboBoxSetActive animSel 0)
+                                   mapM_ (comboBoxAppendText skinSel . takeFileName . head . catMaybes) sl
+                                   when (not $ null $ sl)
+                                        (comboBoxSetActive skinSel 0)
   putStrLn "Initialization Done.."
 
 myDisplay world mass creaR = do
@@ -191,7 +205,7 @@ myDisplay world mass creaR = do
             0.0 1.0 0.0
   GL.rotate (90 :: GLfloat) (Vector3 (-1) 0 0)
   view <- (GLUT.get $ matrix $ Just $ Modelview 0 :: IO (GLmatrix GLfloat)) >>= getMatrixComponents RowMajor
-  withWorld world (do crea <- lift $ readIORef creaR 
+  withWorld world (do crea <- liftIO $ readIORef creaR 
                       Just (GLModel mdl msh) <- findResource (_crea_resource crea)
                       case () of 
                         _
@@ -237,7 +251,7 @@ drawBounding mdl = {-- lift $ do GLUT.pointSize $= 3
                              renderPrimitive Triangles (mapM_ (\idx -> let (Vector3 a b c) = vs !! idx 
                                                                        in  vertex (Vertex3 (gf a) (gf b) (gf c))) is) --}
                    -- lift $ GLUT.renderObject GLUT.Wireframe (GLUT.Sphere' (realToFrac $ vertexRadius_ $ m_bounding_ mdl) 10 10)
-                   lift $ GLUT.renderObject GLUT.Wireframe (GLUT.Sphere' (realToFrac $ vertexRadius_ $ m_bounding_ mdl) 10 10)
+                   liftIO $ GLUT.renderObject GLUT.Wireframe (GLUT.Sphere' (realToFrac $ vertexRadius_ $ m_bounding_ mdl) 10 10)
 
 gf = realToFrac :: Float -> GLfloat
 
@@ -252,9 +266,9 @@ mh = "Creature\\BloodElfGuard\\BloodElfMale_Guard"
 mi = "Creature\\AncientOfWar\\AncientofWar"
 mm = mf
 
--- withWorld :: IORef (WorldState res) -> World res a -> IO a
+withWorld :: IORef MyWorldState -> World a -> IO a
 withWorld w0 action = do a     <- readIORef w0
-                         (b,c) <- runStateT action a
+                         (b,c) <- runStateT (unWorld action) a
                          writeIORef w0 c
                          return b
 {--

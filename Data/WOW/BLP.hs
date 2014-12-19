@@ -2,12 +2,10 @@ module Data.WOW.BLP(BLP(..), CTYPE(..), openBLP, openBLPfromByteString)  where
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString as SBS
-import Text.Printf
 import Control.Exception
 import Data.Binary
 import Data.Array
 import Data.Binary.Get
-import Data.Word
 import Control.Monad(ap,liftM3)
 
 import Data.WOW.Utils
@@ -57,13 +55,13 @@ openBLPfromByteString archive =
         (2,4,1) -> BLPc DXT3' sz dat
         (2,8,1) -> BLPc DXT3' sz dat
         (2,8,7) -> BLPc DXT5' sz dat
-        (a,b,c) -> assert False undefined 
+        _       -> error "BLP type error"
 
 instance Binary Header where
     get   = return Header `ap` (sequence [getCChar,getCChar,getCChar,getCChar])
                           `ap` getUInt
                           `ap` liftM3 (,,) getUChar getUChar getUChar
-                          `ap` (fmap (>0) getUChar)
+                          `ap` (fmap (> 0) (getUChar :: Get Int))
                           `ap` getUInt `ap` getUInt
                           `ap` (sequence $ replicate 16 getUInt)
                           `ap` (sequence $ replicate 16 getUInt)

@@ -6,7 +6,6 @@ import Data.ByteString.Internal
 import Data.Word
 import Data.Array(Array,(!))
 import Control.Monad(forM_)
-import Control.Exception
 import Foreign.Ptr(Ptr,plusPtr)
 import Foreign.Storable(poke)
 import Foreign.Marshal.Array(allocaArray)
@@ -41,8 +40,8 @@ newTextureFromBLP typ raw = do
   [texture] <- GL.genObjectNames 1
   GL.textureBinding typ GL.$= Just texture
   case raw of
-    BLPp pal size@(w,h) ab raw -> allocaArray (w*h) (setupLayerP pal size ab raw)
-    BLPc cty size@(w,h) raw    -> setupLayerC cty size raw
+    BLPp pal size@(w,h) ab raw_ -> allocaArray (w*h) (setupLayerP pal size ab raw_)
+    BLPc cty size raw_          -> setupLayerC cty size raw_
   GL.textureFilter typ GL.$= ((GL.Linear',Nothing),GL.Linear')
   GL.textureWrapMode GL.Texture2D GL.R GL.$= (GL.Repeated, GL.Clamp)
   GL.textureWrapMode GL.Texture2D GL.S GL.$= (GL.Repeated, GL.ClampToEdge)
@@ -53,9 +52,10 @@ newTextureFromBLP typ raw = do
           fix v a = shiftR (v .&. 0x00FF0000) 16 .|. (v .&. 0x0000FF00) .|. shiftL (v .&. 0x000000FF) 16 .|. shiftL a 24
 
           alpha :: Int -> BS.ByteString -> [Word32]
-          alpha 0 raw = repeat 0xff
-          alpha 1 raw = concatMap (\r -> map (\i -> if testBit r i then 0xff else 0) [0..7]) $ BS.unpack raw
-          alpha 8 raw = map fromIntegral (BS.unpack raw)
+          alpha 0 raw_ = repeat 0xff
+          alpha 1 raw_ = concatMap (\r -> map (\i -> if testBit r i then 0xff else 0) [0..7]) $ BS.unpack raw_
+          alpha 8 raw_ = map fromIntegral (BS.unpack raw_)
+          alpha _ _    = error "Unknown alpha type"
 
           halve :: (Int,Int) -> [(Int,Int)]
           halve (1,1) = repeat (1,1)
@@ -64,8 +64,8 @@ newTextureFromBLP typ raw = do
           halve (m,n) = (m,n) : halve (div m 2, div n 2)
 
           setupLayerP :: Array Int Word32 -> (Int,Int) -> Int -> [BS.ByteString] -> Ptr Word32 -> IO ()
-          setupLayerP pal (w,h) ab raw buf =
-            forM_ (zip3 [0..] (halve (w,h)) raw) (\(l,(w',h'),r) -> do
+          setupLayerP pal (w,h) ab raw_ buf =
+            forM_ (zip3 [0..] (halve (w,h)) raw_) (\(l,(w',h'),r) -> do
               let s = w'*h'
               forM_ (zip3 [0..] (BS.unpack r) (alpha ab (BS.drop s r))) (\(o,i,a) ->
                 poke (buf `plusPtr` o) (fix (pal ! fromIntegral i) a))
@@ -74,9 +74,9 @@ newTextureFromBLP typ raw = do
                             (GL.PixelData GL.RGBA GL.UnsignedByte buf) )
 
           setupLayerC :: CTYPE -> (Int,Int) -> [BS.ByteString] -> IO ()
-          setupLayerC ctype (w,h) raw = do
+          setupLayerC ctype (w,h) raw_ = do
             support <- supportTextureCompression
-            forM_ (zip3 [0..] (halve (w,h)) raw) (\(l,(w',h'),r) ->
+            forM_ (zip3 [0..] (halve (w,h)) raw_) (\(l,(w',h'),r) ->
               if not support
               then let t' = case ctype of DXT1' -> DXT1
                                           DXT3' -> DXT3
@@ -99,6 +99,7 @@ newTextureFromBLP typ raw = do
                          err <- GL.get GLU.errors
                          forM_ err (putStrLn . show)))
 
+glCompressedTextureFormat :: CTYPE -> GL.CompressedTextureFormat
 glCompressedTextureFormat DXT1' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT1 
 glCompressedTextureFormat DXT3' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT3
 glCompressedTextureFormat DXT5' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT5

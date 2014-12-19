@@ -5,8 +5,6 @@ import qualified Graphics.Rendering.OpenGL.GL as GL
 import Graphics.Rendering.OpenGL.GL.Tensor
 
 import qualified Data.WOW.M2Model as M2
-import Data.WOW.BLP(CTYPE(..))
-import Data.WOW.World(ResourceId)
 
 data GLResource = GLModel M2.M2Model Mesh
                 | GLTexture Texture
@@ -37,8 +35,12 @@ data Texture   = forall t. (GL.BindableTextureTarget t) =>
                         , tx_object_ :: GL.TextureObject 
                         }
 
+tex_type_1d :: GL.TextureTarget1D
 tex_type_1d       = GL.Texture1D
+tex_type_2d :: GL.TextureTarget2D
 tex_type_2d       = GL.Texture2D
+tex_type_3d :: GL.TextureTarget3D
 tex_type_3d       = GL.Texture3D
+tex_type_cube_map :: GL.TextureTargetCubeMap
 tex_type_cube_map = GL.TextureCubeMap
 

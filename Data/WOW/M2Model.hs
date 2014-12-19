@@ -14,7 +14,6 @@ import Data.Binary
 import Data.List(sort)
 -- import Data.Tensor
 import Graphics.Rendering.OpenGL.GL.Tensor
-import Data.Ord
 import Text.Printf
 import qualified Data.ByteString.Lazy as BS
 import Control.Exception
@@ -175,7 +174,8 @@ lod fs fname = do
   return $ (map (idlk!!) tris, gsdf, txdf)
 
 anim :: FileSystem fs => fs -> FilePath -> BS.ByteString -> [Int] -> [AnimationDef] -> [BoneDef] -> IO ([Animation], [Bone])
-anim fs fname archive gseq ads bds | x=="2M." || x=="2m." = do
+anim fs fname archive gseq ads bds 
+    | x=="2M." || x=="2m." = do
   let !anims = map (\def -> Animation{ anim_Id_     = an_animId_ def
                                      , anim_subId_  = an_subAnimId_ def
                                      , anim_length_ = an_length_ def
@@ -191,6 +191,8 @@ anim fs fname archive gseq ads bds | x=="2M." || x=="2m." = do
                             in Bone t r s (bn_pivot_ def) (bn_parent_ def) (bn_billboarded_ def)
                    ) bds
   return (anims, bones)
+
+    | otherwise = error "unsupported file extension"
     
       where (x,n) = splitAt 3 $ reverse fname
 
@@ -203,7 +205,7 @@ renderpass :: [Texture]
            -> [Int]         -- texture unit lookup
            -> TexUnitDef
            -> RenderPass
-renderpass tx gs rflg trlk txlk talk tulk unit =
+renderpass tx gs rflg trlk txlk _ tulk unit =
     let geoset    = tu_op_ unit
         flag      = rflg !! tu_flagsIndex_ unit
         tex       = (txlk !! tu_textureid_ unit)

@@ -1,10 +1,7 @@
 {-# OPTIONS -XTypeFamilies -XGeneralizedNewtypeDeriving #-}
 module Data.WOW.Quaternion(Quaternion(..), slerp, rotate, identityQ) where
 
-import Data.Cross
 import Data.VectorSpace
-import Data.Array
-
 import Data.WOW.Matrix
 
 newtype Quaternion = Quaternion (Float,Float,Float,Float) deriving (Show,InnerSpace,AdditiveGroup)
@@ -26,7 +23,8 @@ slerp q1 q2 u = normalized $ (a *^ q1') ^+^ (b *^ q2')
 
 rotate :: Quaternion -> Matrix
 rotate (Quaternion (i,j,k,r))
-    = let r2 = r^2; i2 = i^2; j2 = j^2; k2 = k^2
+    = let _2 = 2 :: Int
+          r2 = r^_2; i2 = i^_2; j2 = j^_2; k2 = k^_2
           ri = 2*r*i; rj = 2*r*j; rk = 2*r*k
           jk = 2*j*k; ki = 2*k*i; ij = 2*i*j
       in  r2 `seq` i2 `seq` j2 `seq` k2 `seq`
@@ -35,6 +33,8 @@ rotate (Quaternion (i,j,k,r))
                    , ij+rk      , r2-i2+j2-k2 , jk-ri       , 0 
                    , ki-rj      , jk+ri       , r2-i2-j2+k2 , 0
                    , 0          , 0           , 0           , 1 ]
+
+identityQ :: Quaternion
 identityQ = Quaternion (0,0,0,1)
 
 {--

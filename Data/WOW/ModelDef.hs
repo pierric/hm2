@@ -4,7 +4,6 @@ module Data.WOW.ModelDef where
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.IEEE754
-import Data.Word
 import Data.Int
 import Control.Monad(ap)
 import Graphics.Rendering.OpenGL.GL.Tensor
@@ -228,7 +227,7 @@ instance Binary AttachmentDef where
     get   = do a <- ui
                b <- ui
                p <- get
-               get :: Get AnimationBlock
+               _ <- get :: Get AnimationBlock
                return $ AttachmentDef a b p
     put _ = error "cannot save AttachmentDef"
 
@@ -268,10 +267,10 @@ instance Binary AnimationDef where
 
 instance Binary BoneDef where
     get   = do key  <- getUInt
-               flag <- getUInt
+               flag <- getUInt   :: Get Int
                par  <- getUShort :: Get Int
                geo  <- getUShort
-               getUInt
+               _    <- getUInt   :: Get Int
                t    <- get
                r    <- get
                s    <- get
@@ -321,6 +320,8 @@ instance Show PhysicsSettings where
              "\n                " ++ printf "vertexRadius %.2f" (vertexRadius_ p) ++
              "\n                " ++ "boundingBox " ++ showVecD (boundingBox1_ p) ++ " " ++ showVecD (boundingBox2_ p) ++ 
              "\n                " ++ printf "boundingRadius %.2f" (boundingRadius_ p)
+      where
+        showVecD (Vector3 a b c) = printf "(%.2f,%.2f,%.2f)" a b c
 
 instance Show ViewDef where
     show v = unlines [ printf "id:%s" (mv_id_ v)
@@ -336,7 +337,6 @@ instance Show ViewDef where
 	             , printf "ofsTex: 0x%x" (mv_ofsTex_ v)
 	             , printf "lod:%d" (mv_lod_ v) ]
 
-showVecD (Vector3 a b c) = printf "(%.2f,%.2f,%.2f)" a b c
 
 
 cc :: Get Char
