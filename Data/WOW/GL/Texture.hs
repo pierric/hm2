@@ -100,9 +100,9 @@ newTextureFromBLP typ raw = do
                          forM_ err (putStrLn . show)))
 
 glCompressedTextureFormat :: CTYPE -> GL.CompressedTextureFormat
-glCompressedTextureFormat DXT1' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT1 
-glCompressedTextureFormat DXT3' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT3
-glCompressedTextureFormat DXT5' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT5
+glCompressedTextureFormat DXT1' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT1_EXT
+glCompressedTextureFormat DXT3' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT3_EXT
+glCompressedTextureFormat DXT5' = GL.CompressedTextureFormat GLR.gl_COMPRESSED_RGBA_S3TC_DXT5_EXT
 
 supportTextureCompression :: IO Bool
 supportTextureCompression = do

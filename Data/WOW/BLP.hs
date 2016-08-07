@@ -13,7 +13,7 @@ import Data.WOW.Utils
 data CTYPE = DXT1'
            | DXT3'
            | DXT5'
-           deriving Show
+           deriving (Show, Eq)
 data BLP   = BLPp{ blp_palette_    :: Array Int Word32
                  , blp_size_       :: (Int,Int)
                  , blp_alpha_bits_ :: Int
